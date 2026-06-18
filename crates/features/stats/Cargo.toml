@@ -1,0 +1,23 @@
+[package]
+name    = "feat-stats"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+
+kernel      = { workspace = true }
+persistence = { workspace = true }
+auth-kit    = { workspace = true }
+http-kit    = { workspace = true }
+messaging   = { workspace = true }
+telemetry   = { workspace = true }
+axum        = { workspace = true }
+serde       = { workspace = true }
+serde_json  = { workspace = true }
+uuid        = { workspace = true }
+chrono      = { workspace = true }
+thiserror   = { workspace = true }
+async-trait = { workspace = true }
+tracing     = { workspace = true }
+sqlx        = { workspace = true }
+tokio       = { workspace = true }

@@ -1,0 +1,15 @@
+[server]
+port = 8080
+
+[database]
+url = "postgres://bookvally:bookvally@localhost:5432/bookvally"
+max_connections = 5
+
+[redis]
+url = "redis://localhost:6379"
+
+[kafka]
+brokers = ["localhost:9092"]
+
+[telemetry]
+otlp_endpoint = "http://localhost:4317"

@@ -1,0 +1,7 @@
+target/
+.dev.env
+.env.*
+!.env.example
+.git/
+*.md
+deploy/

@@ -1,0 +1,18 @@
+[package]
+name    = "http-kit"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+kernel      = { workspace = true }
+axum        = { workspace = true }
+tower       = { workspace = true }
+tower-http  = { workspace = true }
+cache       = { workspace = true }
+tracing     = { workspace = true }
+serde       = { workspace = true }
+serde_json  = { workspace = true }
+uuid        = { workspace = true }
+thiserror          = { workspace = true }
+utoipa             = { workspace = true }
+utoipa-swagger-ui  = { workspace = true }

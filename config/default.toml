@@ -1,0 +1,35 @@
+[server]
+host                 = "0.0.0.0"
+port                 = 8080
+shutdown_timeout_secs = 30
+
+[database]
+url                  = "postgres://bookvally:bookvally@localhost:5432/bookvally"
+max_connections      = 10
+min_connections      = 2
+acquire_timeout_secs = 5
+idle_timeout_secs    = 600
+
+[redis]
+url       = "redis://localhost:6379"
+pool_size = 10
+
+[kafka]
+brokers            = ["localhost:9092"]
+consumer_group     = "bookvally-api"
+session_timeout_ms = 10000
+auto_offset_reset  = "earliest"
+
+[auth]
+access_ttl_secs  = 900
+refresh_ttl_secs = 2592000
+
+[streaks]
+daily_goal_minutes   = 15
+max_equipped_freezes = 2
+rollover_cron        = "0 0 * * *"
+
+[telemetry]
+service_name    = "bookvally-api"
+service_version = "0.1.0"
+otlp_endpoint   = "http://localhost:4317"

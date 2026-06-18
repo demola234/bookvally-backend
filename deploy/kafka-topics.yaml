@@ -1,0 +1,44 @@
+# Kafka topic definitions — apply with:
+#   kafka-topics --bootstrap-server localhost:9092 --create \
+#     --topic <name> --partitions <p> --replication-factor 1
+#
+# In docker-compose dev, auto.create.topics.enable=true so these are
+# reference only. In staging/prod apply via the Confluent CLI or Terraform.
+
+topics:
+  - name: reading.events
+    partitions: 6
+    replication_factor: 1
+    config:
+      retention.ms: "604800000"   # 7 days
+      cleanup.policy: delete
+
+  - name: streak.events
+    partitions: 3
+    replication_factor: 1
+    config:
+      retention.ms: "604800000"
+
+  - name: gamification.events
+    partitions: 3
+    replication_factor: 1
+    config:
+      retention.ms: "604800000"
+
+  - name: social.events
+    partitions: 3
+    replication_factor: 1
+    config:
+      retention.ms: "604800000"
+
+  - name: notification.commands
+    partitions: 3
+    replication_factor: 1
+    config:
+      retention.ms: "86400000"    # 1 day — commands are idempotent
+
+  - name: catalog.events
+    partitions: 3
+    replication_factor: 1
+    config:
+      retention.ms: "604800000"

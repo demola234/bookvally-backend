@@ -1,0 +1,15 @@
+[package]
+name    = "worker"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "worker"
+path = "src/main.rs"
+
+[dependencies]
+app         = { path = "../../crates/app" }
+tokio       = { workspace = true }
+tracing     = { workspace = true }
+dotenvy     = { workspace = true }
+anyhow      = { workspace = true }

@@ -1,0 +1,40 @@
+[package]
+name    = "app"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+# platform
+kernel      = { workspace = true }
+auth-kit    = { workspace = true }
+cache       = { workspace = true }
+http-kit    = { workspace = true }
+messaging   = { workspace = true }
+persistence = { workspace = true }
+telemetry   = { workspace = true }
+# features
+feat-auth         = { workspace = true }
+feat-catalog      = { workspace = true }
+feat-discover     = { workspace = true }
+feat-gamification = { workspace = true }
+feat-library      = { workspace = true }
+feat-plans        = { workspace = true }
+feat-profile      = { workspace = true }
+feat-reader       = { workspace = true }
+feat-social       = { workspace = true }
+feat-stats        = { workspace = true }
+feat-streaks      = { workspace = true }
+feat-tts          = { workspace = true }
+# runtime / web
+tokio      = { workspace = true }
+axum       = { workspace = true }
+tower-http = { workspace = true }
+serde      = { workspace = true }
+serde_json = { workspace = true }
+config     = { workspace = true }
+tracing            = { workspace = true }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+anyhow             = { workspace = true }
+utoipa             = { workspace = true }
+utoipa-swagger-ui  = { workspace = true }
+sqlx       = { workspace = true }

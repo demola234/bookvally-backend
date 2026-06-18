@@ -1,0 +1,835 @@
+// =============================================================
+// Bookshelf — database schema (DBML)
+// Paste into https://dbdiagram.io  (Import > paste / new diagram)
+// Social reading app: bring-your-own book files (PDF/EPUB) synced from
+// cloud, read or listened to (TTS), tracked (stats/streaks), and shared
+// (friends). Postgres-flavored.
+// =============================================================
+
+Project bookvally {
+  database_type: 'PostgreSQL'
+  Note: 'Schema reconstructed from the Bookshelf product PRD. UUID primary keys; timestamps in UTC. Cache/denormalized tables are noted as such.'
+}
+
+// ============================ ENUMS ============================
+Enum oauth_provider {
+  apple
+  google
+  github
+  microsoft
+}
+
+Enum cloud_provider {
+  google_drive
+  dropbox
+  icloud
+  onedrive
+  device
+}
+
+Enum book_format {
+  pdf
+  epub
+}
+
+Enum import_status {
+  pending
+  importing
+  completed
+  failed
+}
+
+Enum library_status {
+  queued
+  reading
+  finished
+  abandoned
+}
+
+Enum added_via {
+  import
+  device_upload
+  discover
+  seed
+}
+
+Enum session_mode {
+  read
+  listen
+}
+
+Enum voice_tier {
+  standard
+  neural
+  pro
+}
+
+Enum friendship_status {
+  pending
+  accepted
+  declined
+  blocked
+}
+
+Enum invite_channel {
+  link
+  email
+  qr
+  contacts
+}
+
+Enum goal_type {
+  annual_books
+  weekly_pages
+}
+
+Enum app_theme {
+  light
+  dark
+  auto
+}
+
+Enum reader_theme {
+  light
+  sepia
+  dark
+}
+
+Enum notification_type {
+  friend_request
+  friend_accepted
+  friend_finished_book
+  friend_started_book
+  streak_reminder        // "your streak is at risk"
+  streak_milestone       // hit 7 / 30 / 100 / 365 days
+  league_promoted
+  league_demoted
+  plan_day_due
+  achievement_unlocked
+  import_complete
+}
+
+// --- profile & session ---
+Enum account_status {
+  active
+  suspended
+  deactivated
+}
+
+Enum profile_visibility {
+  public
+  friends
+  private
+}
+
+Enum device_platform {
+  ios
+  android
+  web
+}
+
+// --- streaks & gamification (Duolingo-inspired) ---
+Enum streak_day_status {
+  none        // no qualifying activity
+  earned      // met the daily goal -> streak advanced
+  frozen      // missed, but a streak freeze was consumed
+  repaired    // restored after the fact (streak repair)
+}
+
+Enum freeze_status {
+  available
+  used
+  expired
+}
+
+Enum freeze_source {
+  earned       // milestone reward
+  purchased    // spent gems
+  gifted       // from a friend
+}
+
+Enum xp_source {
+  reading_minutes
+  finished_chapter
+  finished_book
+  daily_goal_met
+  plan_day_completed
+  achievement
+  streak_milestone
+}
+
+Enum achievement_category {
+  streak
+  volume        // pages / words / hours
+  social
+  exploration   // genres / authors
+  plans
+  listening      // TTS milestones
+}
+
+Enum league_result {
+  promoted
+  demoted
+  stayed
+}
+
+// --- reading plans (Bible.com-inspired) ---
+Enum subscription_status {
+  active
+  completed
+  paused
+  abandoned
+}
+
+// ============================ IDENTITY ============================
+
+Table users {
+  id                    uuid        [pk, default: `gen_random_uuid()`]
+  handle                varchar(20) [unique, not null, note: '3-20 chars, [a-z0-9.]']
+  display_name          varchar(120)
+  email                 citext      [unique]
+  avatar_url            text
+  avatar_hue            smallint    [note: 'deterministic gradient hue when no avatar']
+  terms_version         varchar(20) [note: 'accepted Terms/Privacy version']
+  terms_accepted_at     timestamptz
+  status                account_status [not null, default: 'active']
+  timezone              varchar(40) [not null, default: 'UTC', note: 'IANA tz — defines the LOCAL day boundary used for streaks & daily goal']
+  last_active_at        timestamptz [note: 'drives "reading now" presence']
+  created_at            timestamptz [not null, default: `now()`]
+  updated_at            timestamptz [not null, default: `now()`]
+
+  indexes {
+    handle [unique]
+    email
+  }
+  Note: 'Auth-critical fields only. Display/profile fields live in user_profiles. OAuth-only auth.'
+}
+
+Table oauth_accounts {
+  id                  uuid            [pk, default: `gen_random_uuid()`]
+  user_id             uuid            [not null, ref: > users.id]
+  provider            oauth_provider  [not null]
+  provider_account_id varchar(255)    [not null, note: 'subject/uid from the provider']
+  email               citext
+  created_at          timestamptz     [not null, default: `now()`]
+
+  indexes {
+    (provider, provider_account_id) [unique]
+    user_id
+  }
+  Note: 'A user may link multiple providers (Apple, Google, GitHub, Microsoft).'
+}
+
+Table user_profiles {
+  user_id          uuid               [pk, ref: - users.id]
+  bio              varchar(280)
+  pronouns         varchar(40)
+  location         varchar(120)
+  banner_url       text               [note: 'profile header image']
+  visibility       profile_visibility [not null, default: 'friends']
+  favorite_genres  varchar(200)       [note: 'displayed taste tags']
+  reading_since    date               [note: 'shown as "Reading since ..."']
+  followers_count  int                [default: 0, note: 'cache']
+  friends_count    int                [default: 0, note: 'cache']
+  created_at       timestamptz        [not null, default: `now()`]
+  updated_at       timestamptz        [not null, default: `now()`]
+  Note: 'Robust display profile, 1:1 with users. Kept separate so the auth-critical users row stays lean.'
+}
+
+Table devices {
+  id           uuid            [pk, default: `gen_random_uuid()`]
+  user_id      uuid            [not null, ref: > users.id]
+  platform     device_platform [not null]
+  device_name  varchar(120)
+  push_token   text            [note: 'APNs/FCM token for streak & plan reminders']
+  app_version  varchar(20)
+  last_seen_at timestamptz
+  created_at   timestamptz     [not null, default: `now()`]
+
+  indexes {
+    user_id
+  }
+  Note: 'Registered devices per user; holds push tokens for reminders.'
+}
+
+Table sessions {
+  id                 uuid         [pk, default: `gen_random_uuid()`]
+  user_id            uuid         [not null, ref: > users.id]
+  device_id          uuid         [ref: > devices.id]
+  refresh_token_hash varchar(255) [not null, note: 'hashed; rotated on each refresh']
+  ip_address         varchar(45)
+  user_agent         text
+  created_at         timestamptz  [not null, default: `now()`]
+  last_active_at     timestamptz
+  expires_at         timestamptz  [not null]
+  revoked_at         timestamptz  [note: 'set on logout / revoke; null = active']
+
+  indexes {
+    user_id
+    (user_id, revoked_at)
+  }
+  Note: 'Auth/login sessions for robust multi-device management: list active devices, sign out remotely, rotate refresh tokens.'
+}
+
+Table reminders {
+  id           uuid        [pk, default: `gen_random_uuid()`]
+  user_id      uuid        [not null, ref: > users.id]
+  time_local   time        [not null]
+  days_of_week smallint    [not null, default: 127, note: 'bitmask Sun..Sat; 127 = daily']
+  type         varchar(30) [not null, default: 'reading']
+  enabled      boolean     [not null, default: true]
+  created_at   timestamptz [not null, default: `now()`]
+
+  indexes {
+    user_id
+  }
+  Note: 'Scheduled reading reminders (Duolingo-style nudges).'
+}
+
+Table user_settings {
+  user_id                 uuid        [pk, ref: - users.id]
+  app_theme               app_theme   [not null, default: 'auto']
+  reader_theme            reader_theme [not null, default: 'sepia']
+  reader_font_family      varchar(60) [default: 'Source Serif 4']
+  reader_font_size        smallint    [default: 16]
+  default_voice_id        uuid        [ref: > voices.id]
+  default_speed           numeric(3,1) [default: 1.0]
+  default_pitch           numeric(3,1) [default: 1.0]
+  sleep_timer_minutes     smallint    [default: 30]
+  daily_goal_minutes      smallint    [not null, default: 15, note: 'Duolingo-style daily target; met -> streak advances']
+  activity_sharing        boolean     [not null, default: true, note: 'master privacy toggle: gates all friend-visible activity']
+  contact_matching_opt_in boolean     [not null, default: false]
+  updated_at              timestamptz [not null, default: `now()`]
+  Note: '1:1 with users.'
+}
+
+Table reading_goals {
+  id          uuid       [pk, default: `gen_random_uuid()`]
+  user_id     uuid       [not null, ref: > users.id]
+  type        goal_type  [not null]
+  target      int        [not null, note: 'e.g., 40 (books/yr) or 175 (pages/wk)']
+  period_start date       [not null]
+  created_at  timestamptz [not null, default: `now()`]
+
+  indexes {
+    (user_id, type, period_start) [unique]
+  }
+}
+
+Table user_stats {
+  user_id               uuid        [pk, ref: - users.id]
+  books_finished_total  int         [default: 0]
+  highlights_total      int         [default: 0]
+  minutes_total         bigint      [default: 0]
+  pages_total           bigint      [default: 0]
+  updated_at            timestamptz [not null, default: `now()`]
+  Note: 'DENORMALIZED lifetime totals for the profile/share card. Derived from reading_sessions/highlights; rebuildable. Streak lives in streaks; XP/level/gems in user_game_state.'
+}
+
+// ============================ STREAKS & GAMIFICATION (Duolingo-inspired) ============================
+
+Table daily_activity {
+  id             uuid              [pk, default: `gen_random_uuid()`]
+  user_id        uuid              [not null, ref: > users.id]
+  activity_date  date              [not null, note: 'LOCAL date in users.timezone']
+  minutes        numeric(6,2)      [default: 0]
+  pages          int               [default: 0]
+  xp_earned      int               [default: 0]
+  met_daily_goal boolean           [not null, default: false]
+  streak_status  streak_day_status [not null, default: 'none']
+  created_at     timestamptz       [not null, default: `now()`]
+  updated_at     timestamptz       [not null, default: `now()`]
+
+  indexes {
+    (user_id, activity_date) [unique]
+  }
+  Note: 'Per-user per-day rollup and the SOURCE OF TRUTH for streaks. One row per local day; powers the daily goal, streak status, weekly leaderboards, and league XP. streak_status records whether the day was earned, frozen, or repaired.'
+}
+
+Table streaks {
+  user_id          uuid        [pk, ref: - users.id]
+  current_length   int         [not null, default: 0]
+  longest_length   int         [not null, default: 0]
+  started_on       date        [note: 'local date the current streak began']
+  last_extended_on date        [note: 'local date the streak last advanced']
+  freezes_equipped smallint    [not null, default: 0, note: 'auto-armed freezes, max 2 (Duolingo-style)']
+  updated_at       timestamptz [not null, default: `now()`]
+  Note: 'Streak summary/cache, 1:1 with users. Recomputable from daily_activity. A streak advances on a met_daily_goal day; a missed day consumes an equipped freeze (streak_status = frozen) before the streak breaks.'
+}
+
+Table streak_freezes {
+  id          uuid          [pk, default: `gen_random_uuid()`]
+  user_id     uuid          [not null, ref: > users.id]
+  status      freeze_status [not null, default: 'available']
+  source      freeze_source [not null]
+  acquired_at timestamptz   [not null, default: `now()`]
+  used_on     date          [note: 'local date the freeze was consumed']
+  created_at  timestamptz   [not null, default: `now()`]
+
+  indexes {
+    (user_id, status)
+  }
+  Note: 'Inventory of streak freezes. Consumed automatically on a missed day to keep the streak alive.'
+}
+
+Table user_game_state {
+  user_id                      uuid        [pk, ref: - users.id]
+  xp_total                     bigint      [not null, default: 0]
+  level                        int         [not null, default: 1]
+  gems                         int         [not null, default: 0, note: 'soft currency; spend on streak freezes']
+  current_league_membership_id uuid        [ref: > league_memberships.id]
+  updated_at                   timestamptz [not null, default: `now()`]
+  Note: 'Gamification cache, 1:1 with users. xp_total derived from xp_events.'
+}
+
+Table xp_events {
+  id         uuid        [pk, default: `gen_random_uuid()`]
+  user_id    uuid        [not null, ref: > users.id]
+  amount     int         [not null]
+  source     xp_source   [not null]
+  ref_type   varchar(40) [note: 'optional: library_item / plan_day / achievement ...']
+  ref_id     uuid
+  created_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (user_id, created_at)
+  }
+  Note: 'Append-only XP ledger. Weekly sums feed league standings.'
+}
+
+Table achievements {
+  id          uuid                 [pk, default: `gen_random_uuid()`]
+  code        varchar(60)          [unique, not null]
+  name        varchar(120)         [not null]
+  description varchar(280)
+  icon        varchar(60)
+  category    achievement_category [not null]
+  tier        smallint             [default: 1, note: 'bronze/silver/gold tiers of the same family']
+  threshold   int                  [note: 'e.g. 7 (day streak), 1000000 (words read)']
+  created_at  timestamptz          [not null, default: `now()`]
+  Note: 'Catalog of badges. Streak milestones (7/30/100/365) are achievements in the streak category.'
+}
+
+Table user_achievements {
+  id             uuid        [pk, default: `gen_random_uuid()`]
+  user_id        uuid        [not null, ref: > users.id]
+  achievement_id uuid        [not null, ref: > achievements.id]
+  progress       int         [default: 0, note: 'toward threshold; for in-progress badges']
+  unlocked_at    timestamptz [note: 'null until earned']
+  is_pinned      boolean     [not null, default: false, note: 'showcased on profile']
+
+  indexes {
+    (user_id, achievement_id) [unique]
+  }
+}
+
+Table leagues {
+  id            uuid        [pk, default: `gen_random_uuid()`]
+  name          varchar(40) [not null, note: 'Bronze, Silver, Gold, Sapphire, Ruby, Emerald, Diamond ...']
+  level         smallint    [unique, not null, note: 'tier order; 1 = lowest']
+  promote_count smallint    [default: 10, note: 'top N promoted each week']
+  demote_count  smallint    [default: 5,  note: 'bottom N demoted each week']
+  Note: 'Static ladder of league tiers (Duolingo-style).'
+}
+
+Table league_cohorts {
+  id         uuid        [pk, default: `gen_random_uuid()`]
+  league_id  uuid        [not null, ref: > leagues.id]
+  week_start date        [not null, note: 'Monday of the competition week']
+  created_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (league_id, week_start)
+  }
+  Note: 'A weekly competition group (~30 readers) within a league tier.'
+}
+
+Table league_memberships {
+  id        uuid          [pk, default: `gen_random_uuid()`]
+  cohort_id uuid          [not null, ref: > league_cohorts.id]
+  user_id   uuid          [not null, ref: > users.id]
+  xp        int           [not null, default: 0, note: 'XP earned during this cohort week']
+  rank      smallint
+  result    league_result
+  joined_at timestamptz   [not null, default: `now()`]
+
+  indexes {
+    (cohort_id, user_id) [unique]
+    user_id
+  }
+}
+
+Table friend_streaks {
+  id               uuid        [pk, default: `gen_random_uuid()`]
+  user_low_id      uuid        [not null, ref: > users.id, note: 'lower user id of the pair (dedupe)']
+  user_high_id     uuid        [not null, ref: > users.id]
+  current_length   int         [not null, default: 0]
+  longest_length   int         [not null, default: 0]
+  last_extended_on date
+  created_at       timestamptz [not null, default: `now()`]
+
+  indexes {
+    (user_low_id, user_high_id) [unique]
+  }
+  Note: 'Duolingo-style streak between two friends who both read on the same day.'
+}
+
+// ============================ READING PLANS (Bible.com-inspired) ============================
+
+Table reading_plans {
+  id            uuid        [pk, default: `gen_random_uuid()`]
+  title         varchar(200) [not null]
+  description   text
+  cover_url     text
+  category      varchar(80) [note: 'classics, by-author, seasonal, challenge ...']
+  duration_days int         [not null]
+  is_official   boolean     [not null, default: false, note: 'curated by Bookshelf vs. community-made']
+  creator_id    uuid        [ref: > users.id, note: 'null for official plans']
+  created_at    timestamptz [not null, default: `now()`]
+  Note: 'A structured, day-by-day reading schedule (e.g. "Read 6 classics in 60 days").'
+}
+
+Table plan_days {
+  id          uuid         [pk, default: `gen_random_uuid()`]
+  plan_id     uuid         [not null, ref: > reading_plans.id]
+  day_number  int          [not null]
+  title       varchar(200)
+  description text
+
+  indexes {
+    (plan_id, day_number) [unique]
+  }
+}
+
+Table plan_day_items {
+  id           uuid        [pk, default: `gen_random_uuid()`]
+  plan_day_id  uuid        [not null, ref: > plan_days.id]
+  book_id      uuid        [ref: > books.id]
+  from_locator text
+  to_locator   text
+  label        varchar(200) [note: 'e.g. "Chapters 1-3"']
+  Note: 'The specific reading(s) assigned on a plan day.'
+}
+
+Table plan_groups {
+  id          uuid         [pk, default: `gen_random_uuid()`]
+  plan_id     uuid         [not null, ref: > reading_plans.id]
+  owner_id    uuid         [not null, ref: > users.id]
+  name        varchar(120)
+  invite_code varchar(40)  [unique]
+  created_at  timestamptz  [not null, default: `now()`]
+  Note: 'Bible.com-style "plan with friends": a shared cohort reading the same plan together.'
+}
+
+Table plan_group_members {
+  id        uuid        [pk, default: `gen_random_uuid()`]
+  group_id  uuid        [not null, ref: > plan_groups.id]
+  user_id   uuid        [not null, ref: > users.id]
+  joined_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (group_id, user_id) [unique]
+  }
+}
+
+Table plan_subscriptions {
+  id          uuid                [pk, default: `gen_random_uuid()`]
+  user_id     uuid                [not null, ref: > users.id]
+  plan_id     uuid                [not null, ref: > reading_plans.id]
+  group_id    uuid                [ref: > plan_groups.id, note: 'null = solo']
+  started_on  date                [not null]
+  current_day int                 [default: 1]
+  status      subscription_status [not null, default: 'active']
+  created_at  timestamptz         [not null, default: `now()`]
+
+  indexes {
+    (user_id, plan_id) [unique]
+  }
+  Note: 'A user enrolled in a plan, solo or within a group.'
+}
+
+Table plan_progress {
+  id              uuid        [pk, default: `gen_random_uuid()`]
+  subscription_id uuid        [not null, ref: > plan_subscriptions.id]
+  plan_day_id     uuid        [not null, ref: > plan_days.id]
+  completed_at    timestamptz
+
+  indexes {
+    (subscription_id, plan_day_id) [unique]
+  }
+  Note: 'Per-day completion within a plan subscription.'
+}
+
+// ============================ CATALOG & FILES ============================
+
+Table books {
+  id              uuid        [pk, default: `gen_random_uuid()`]
+  title           varchar(500) [not null]
+  author          varchar(300)
+  published_year  smallint
+  isbn            varchar(20)
+  genre           varchar(80)
+  synopsis        text
+  total_pages     int
+  cover_url       text        [note: 'null falls back to typographic cover']
+  is_public_domain boolean    [not null, default: false]
+  metadata_source varchar(80) [note: 'gutenberg, wikimedia, user-supplied, etc.']
+  created_at      timestamptz [not null, default: `now()`]
+
+  indexes {
+    isbn
+    (title, author)
+  }
+  Note: 'Work-level metadata. Public-domain titles are shared across users and power Discover; user PDFs get a row too (possibly user-private).'
+}
+
+Table cloud_connections {
+  id                uuid           [pk, default: `gen_random_uuid()`]
+  user_id           uuid           [not null, ref: > users.id]
+  provider          cloud_provider [not null]
+  account_email     citext
+  status            varchar(20)    [not null, default: 'connected']
+  access_token_ref  varchar(255)   [note: 'pointer to secrets vault; never store raw tokens here']
+  connected_at      timestamptz    [not null, default: `now()`]
+  last_synced_at    timestamptz
+
+  indexes {
+    (user_id, provider) [unique]
+  }
+  Note: 'OAuth connections to Drive/Dropbox/iCloud/OneDrive used for import + sync.'
+}
+
+Table book_files {
+  id                  uuid          [pk, default: `gen_random_uuid()`]
+  user_id             uuid          [not null, ref: > users.id]
+  book_id             uuid          [ref: > books.id, note: 'matched work; null until resolved']
+  cloud_connection_id uuid          [ref: > cloud_connections.id, note: 'null when device upload']
+  source              cloud_provider [not null]
+  file_name           varchar(500)  [not null]
+  format              book_format   [not null]
+  size_bytes          bigint
+  storage_key         text          [note: 'app-side storage pointer for the imported file']
+  import_status       import_status [not null, default: 'pending']
+  import_progress     smallint      [default: 0, note: '0-100']
+  imported_at         timestamptz
+  created_at          timestamptz   [not null, default: `now()`]
+
+  indexes {
+    user_id
+    book_id
+    (user_id, import_status)
+  }
+  Note: 'The physical imported asset. One file per library item (BYO content).'
+}
+
+// ============================ LIBRARY & READING STATE ============================
+
+Table library_items {
+  id              uuid           [pk, default: `gen_random_uuid()`]
+  user_id         uuid           [not null, ref: > users.id]
+  book_id         uuid           [not null, ref: > books.id]
+  book_file_id    uuid           [ref: > book_files.id, note: 'null for want-to-read with no file yet']
+  status          library_status [not null, default: 'queued']
+  current_page    int            [default: 0]
+  current_locator text           [note: 'EPUB CFI / PDF anchor; SHARED by read & listen so handoff resumes in place']
+  progress_pct    numeric(5,2)   [default: 0, note: 'cached, derived from page/total']
+  rating          smallint       [note: '1-5, personal; null if unrated']
+  added_via       added_via      [not null, default: 'import']
+  started_at      timestamptz
+  finished_at     timestamptz
+  last_read_at    timestamptz
+  created_at      timestamptz    [not null, default: `now()`]
+
+  indexes {
+    (user_id, book_id) [unique]
+    (user_id, status)
+    (user_id, last_read_at)
+  }
+  Note: 'The user-to-book relationship: one row per book in a users library. Holds reading state, status, rating. Drives Library, Details, and the friends-on-this-book module.'
+}
+
+Table reading_sessions {
+  id              uuid         [pk, default: `gen_random_uuid()`]
+  user_id         uuid         [not null, ref: > users.id]
+  library_item_id uuid         [not null, ref: > library_items.id]
+  mode            session_mode [not null]
+  voice_id        uuid         [ref: > voices.id, note: 'set when mode = listen']
+  started_at      timestamptz  [not null]
+  ended_at        timestamptz
+  pages_read      int          [default: 0]
+  minutes         numeric(6,2) [default: 0]
+  created_at      timestamptz  [not null, default: `now()`]
+
+  indexes {
+    (user_id, started_at)
+    library_item_id
+  }
+  Note: 'Raw events powering Stats: pages, minutes, streaks, weekly goal, pace/projection. One row per reading or listening session.'
+}
+
+Table highlights {
+  id              uuid            [pk, default: `gen_random_uuid()`]
+  library_item_id uuid            [not null, ref: > library_items.id]
+  user_id         uuid            [not null, ref: > users.id, note: 'denormalized for owner queries']
+  color           text            [not null]
+  locator_start   text            [not null]
+  locator_end     text            [not null]
+  selected_text   text
+  note            text            [note: 'optional note attached to the highlight']
+  created_at      timestamptz     [not null, default: `now()`]
+  updated_at      timestamptz     [not null, default: `now()`]
+
+  indexes {
+    library_item_id
+    user_id
+  }
+}
+
+Table bookmarks {
+  id              uuid        [pk, default: `gen_random_uuid()`]
+  library_item_id uuid        [not null, ref: > library_items.id]
+  locator         text        [not null]
+  page            int
+  label           varchar(140)
+  created_at      timestamptz [not null, default: `now()`]
+
+  indexes {
+    library_item_id
+  }
+}
+
+// ============================ TEXT-TO-SPEECH ============================
+
+Table voices {
+  id          uuid        [pk, default: `gen_random_uuid()`]
+  name        varchar(60) [not null, note: 'Aria, Bram, Coral, Dax, Echo, Sage, Vale...']
+  locale      varchar(10) [not null, note: 'en-US, en-GB, en-AU']
+  tier        voice_tier  [not null]
+  descriptor  varchar(80) [note: 'warm · friendly, deep · calm, etc.']
+  avatar_hue  smallint
+  preview_url text
+  is_active   boolean     [not null, default: true]
+  created_at  timestamptz [not null, default: `now()`]
+
+  indexes {
+    (locale, tier)
+  }
+  Note: 'Global catalog of read-aloud voices shown in the Voice Picker.'
+}
+
+// ============================ SOCIAL ============================
+
+Table friendships {
+  id            uuid              [pk, default: `gen_random_uuid()`]
+  requester_id  uuid              [not null, ref: > users.id]
+  addressee_id  uuid              [not null, ref: > users.id]
+  status        friendship_status [not null, default: 'pending']
+  context       varchar(120)      [note: 'e.g. "2 friends in common", "From your contacts"']
+  created_at    timestamptz       [not null, default: `now()`]
+  responded_at  timestamptz
+
+  indexes {
+    (requester_id, addressee_id) [unique]
+    addressee_id
+    status
+  }
+  Note: 'One row per relationship. "Friends of X" = rows where X is requester OR addressee and status = accepted. Presence/status of a friend is derived from their library_items.last_read_at and gated by user_settings.activity_sharing.'
+}
+
+Table invites {
+  id            uuid           [pk, default: `gen_random_uuid()`]
+  inviter_id    uuid           [not null, ref: > users.id]
+  code          varchar(40)    [unique, not null, note: 'link/QR token']
+  channel       invite_channel [not null]
+  invited_email citext
+  accepted_by   uuid           [ref: > users.id]
+  status        varchar(20)    [not null, default: 'pending']
+  created_at    timestamptz    [not null, default: `now()`]
+  accepted_at   timestamptz
+
+  indexes {
+    inviter_id
+    code [unique]
+  }
+}
+
+Table notifications {
+  id          uuid              [pk, default: `gen_random_uuid()`]
+  user_id     uuid              [not null, ref: > users.id, note: 'recipient']
+  type        notification_type [not null]
+  actor_id    uuid              [ref: > users.id, note: 'who triggered it']
+  book_id     uuid              [ref: > books.id]
+  payload     jsonb
+  read_at     timestamptz
+  created_at  timestamptz       [not null, default: `now()`]
+
+  indexes {
+    (user_id, read_at)
+    (user_id, created_at)
+  }
+  Note: 'Friend requests/accepts, friend activity, streak reminders, import completion.'
+}
+
+// ============================ TABLE GROUPS ============================
+
+TableGroup identity {
+  users
+  oauth_accounts
+  user_profiles
+  user_settings
+  reading_goals
+  user_stats
+}
+
+TableGroup profile_and_session {
+  sessions
+  devices
+  reminders
+}
+
+TableGroup streaks_and_gamification {
+  daily_activity
+  streaks
+  streak_freezes
+  user_game_state
+  xp_events
+  achievements
+  user_achievements
+  leagues
+  league_cohorts
+  league_memberships
+  friend_streaks
+}
+
+TableGroup reading_plans_group {
+  reading_plans
+  plan_days
+  plan_day_items
+  plan_groups
+  plan_group_members
+  plan_subscriptions
+  plan_progress
+}
+
+TableGroup catalog_and_files {
+  books
+  cloud_connections
+  book_files
+}
+
+TableGroup reading {
+  library_items
+  reading_sessions
+  highlights
+  bookmarks
+}
+
+TableGroup tts {
+  voices
+}
+
+TableGroup social {
+  friendships
+  invites
+  notifications
+}

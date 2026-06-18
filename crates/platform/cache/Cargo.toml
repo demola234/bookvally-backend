@@ -1,0 +1,11 @@
+[package]
+name    = "cache"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+redis      = { workspace = true }
+serde      = { workspace = true }
+serde_json = { workspace = true }
+anyhow     = { workspace = true }
+kernel = { workspace = true }

@@ -1,0 +1,118 @@
+[workspace]
+resolver = "2"
+members = [
+    "cmd/api",
+    "cmd/worker",
+    "cmd/gen-schema",
+    "crates/app",
+    # platform
+    "crates/platform/kernel",
+    "crates/platform/auth-kit",
+    "crates/platform/cache",
+    "crates/platform/http-kit",
+    "crates/platform/messaging",
+    "crates/platform/persistence",
+    "crates/platform/telemetry",
+    # features
+    "crates/features/auth",
+    "crates/features/catalog",
+    "crates/features/discover",
+    "crates/features/gamification",
+    "crates/features/library",
+    "crates/features/plans",
+    "crates/features/profile",
+    "crates/features/reader",
+    "crates/features/social",
+    "crates/features/stats",
+    "crates/features/streaks",
+    "crates/features/tts",
+]
+
+[workspace.package]
+version     = "0.1.0"
+edition     = "2021"
+authors     = ["Book Vally"]
+license     = "MIT"
+
+[workspace.dependencies]
+# async runtime
+tokio        = { version = "1.52.3", features = ["full"] }
+
+
+# web
+axum         = { version = "0.8.9", features = ["macros"] }
+axum-extra   = { version = "0.10", features = ["typed-header"] }
+tower        = "0.5.3"
+tower-http   = { version = "0.7.0", features = ["trace", "request-id", "cors"] }
+
+# serialization
+serde        = { version = "1.0.228", features = ["derive"] }
+serde_json   = "1.0.150"
+
+# db
+sqlx         = { version = "0.8.5", features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono", "migrate"] }
+
+# redis
+redis        = { version = "0.26.1", features = ["tokio-comp", "connection-manager"] }
+
+# kafka
+rdkafka      = { version = "0.39.0", features = ["tokio"] }
+
+# ids / time
+uuid         = { version = "1.23.3", features = ["v4", "serde"] }
+chrono       = { version = "0.4.45", features = ["serde"] }
+chrono-tz    = { version = "0.10.4", features = ["serde"] }
+rust_decimal         = { version = "1", features = ["serde"] }
+rust_decimal_macros  = "1.30.0"
+
+# auth
+jsonwebtoken = { version = "10.4.0", features = ["rust_crypto"] }
+argon2       = "0.5.3"
+
+# tracing / otel
+tracing                          = "0.1.44"
+opentelemetry                    = { version = "0.32", features = ["metrics"] }
+opentelemetry_sdk                = { version = "0.32.1", features = ["rt-tokio"] }
+opentelemetry-otlp               = { version = "0.32.0", features = ["tonic"] }
+tracing-opentelemetry            = "0.33.0"
+
+# error handling
+thiserror    = "2.0.18"
+anyhow       = "1.0.102"
+
+# openapi / swagger
+utoipa             = { version = "5", features = ["axum_extras", "chrono", "uuid", "decimal"] }
+utoipa-swagger-ui  = { version = "9", features = ["axum"] }
+
+
+
+# misc
+config       = "0.15.23"
+dotenvy      = "0.15.7"
+async-trait  = "0.1.89"
+once_cell    = "1.21.4"
+sha2 = "0.10"
+hex  = "0.4"
+
+# workspace-internal platform
+kernel       = { path = "crates/platform/kernel" }
+auth-kit     = { path = "crates/platform/auth-kit" }
+cache        = { path = "crates/platform/cache" }
+http-kit     = { path = "crates/platform/http-kit" }
+messaging    = { path = "crates/platform/messaging" }
+persistence  = { path = "crates/platform/persistence" }
+telemetry    = { path = "crates/platform/telemetry" }
+
+# workspace-internal features
+feat-auth         = { path = "crates/features/auth" }
+feat-catalog      = { path = "crates/features/catalog" }
+feat-discover     = { path = "crates/features/discover" }
+feat-gamification = { path = "crates/features/gamification" }
+feat-library      = { path = "crates/features/library" }
+feat-plans        = { path = "crates/features/plans" }
+feat-profile      = { path = "crates/features/profile" }
+feat-reader       = { path = "crates/features/reader" }
+feat-social       = { path = "crates/features/social" }
+feat-stats        = { path = "crates/features/stats" }
+feat-streaks      = { path = "crates/features/streaks" }
+feat-tts          = { path = "crates/features/tts" }

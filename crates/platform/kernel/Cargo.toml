@@ -1,0 +1,12 @@
+[package]
+name    = "kernel"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+uuid      = { workspace = true }
+chrono    = { workspace = true }
+serde     = { workspace = true }
+thiserror = { workspace = true }
+chrono-tz = { workspace = true }
+serde_json = { workspace = true }

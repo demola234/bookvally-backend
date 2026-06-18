@@ -1,0 +1,30 @@
+[package]
+name    = "feat-auth"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+
+kernel      = { workspace = true }
+persistence = { workspace = true }
+auth-kit    = { workspace = true }
+http-kit    = { workspace = true }
+messaging   = { workspace = true }
+telemetry   = { workspace = true }
+axum        = { workspace = true }
+serde       = { workspace = true }
+serde_json  = { workspace = true }
+uuid        = { workspace = true }
+chrono      = { workspace = true }
+thiserror   = { workspace = true }
+async-trait = { workspace = true }
+anyhow      = { workspace = true }
+tracing     = { workspace = true }
+sqlx        = { workspace = true }
+tokio       = { workspace = true }
+cache        = { workspace = true }
+jsonwebtoken = { workspace = true }
+argon2       = { workspace = true }
+utoipa =  {workspace = true}
+sha2 = { workspace = true }
+hex  = { workspace = true }

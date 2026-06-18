@@ -1,0 +1,13 @@
+[package]
+name    = "gen-schema"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "gen-schema"
+path = "src/main.rs"
+
+[dependencies]
+app        = { path = "../../crates/app" }
+utoipa     = { workspace = true }
+serde_json = { workspace = true }

@@ -1,0 +1,16 @@
+[package]
+name    = "api"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "api"
+path = "src/main.rs"
+
+[dependencies]
+app         = { path = "../../crates/app" }
+tokio       = { workspace = true }
+tracing     = { workspace = true }
+dotenvy     = { workspace = true }
+anyhow      = { workspace = true }
+axum        = { workspace = true }
