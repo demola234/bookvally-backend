@@ -9,7 +9,7 @@
 *.zip
 
 *.rar
-*.bakj*.war
+*.bak
 *.war
 /config/development.toml
 
