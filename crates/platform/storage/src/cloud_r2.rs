@@ -37,7 +37,7 @@ impl CloudR2Storage {
 
     fn cdn_url(&self, key: &str) -> String {
         match &self.public_url {
-            Some(base) => format!("{}/{}", base.trim_end_matches('/'), key),
+            Some(base) => format!("{}/{}/{}", base.trim_end_matches('/'), self.bucket, key),
             None       => format!("https://{}.r2.dev/{}", self.bucket, key),
         }
     }

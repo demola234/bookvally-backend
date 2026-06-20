@@ -12,3 +12,7 @@ async-trait = { workspace = true }
 serde = { workspace = true }
 tokio = { workspace = true }
 aws-smithy-types = "1.5.0"
+dotenvy = "0.15.7"
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
