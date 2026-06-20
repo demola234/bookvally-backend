@@ -1,4 +1,4 @@
-# ── build stage ─────────────────────────────────────────────
+# build stage
 FROM rust:1.80-alpine AS builder
 
 RUN apk add --no-cache musl-dev openssl-dev pkgconfig
@@ -11,7 +11,7 @@ COPY cmd/ cmd/
 # Build release binary
 RUN cargo build --release --bin api
 
-# ── runtime stage ────────────────────────────────────────────
+# runtime stage
 FROM alpine:3.20 AS runtime
 
 RUN apk add --no-cache ca-certificates tzdata

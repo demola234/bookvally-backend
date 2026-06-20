@@ -12,6 +12,7 @@ http-kit    = { workspace = true }
 messaging   = { workspace = true }
 persistence = { workspace = true }
 telemetry   = { workspace = true }
+storage     = { workspace = true }
 # features
 feat-auth         = { workspace = true }
 feat-catalog      = { workspace = true }

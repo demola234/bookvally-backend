@@ -73,6 +73,7 @@ pub fn all_routes(container: Arc<Container>) -> axum::Router {
     // openapi.merge(feat_catalog::http::CatalogApiDoc::openapi());  — add as features are built
 
     Router::new()
+        .route("/health", axum::routing::get(|| async { "ok" }))
         .merge(SwaggerUi::new("/docs").url("/docs/openapi.json", openapi))
         .merge(feat_auth::http::routes::routes().with_state(auth_state))
         .merge(feat_profile::http::routes::routes().with_state(profile_state))
