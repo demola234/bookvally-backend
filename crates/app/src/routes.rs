@@ -48,8 +48,14 @@ pub fn all_routes(container: Arc<Container>) -> axum::Router {
         container.kafka.clone(),
     );
 
+    let profile_state = feat_profile::wiring::ProfileState::new(
+        container.db.clone(),
+        container.jwt.clone(),
+    );
+
     let mut openapi = ApiDoc::openapi();
     openapi.merge(feat_auth::http::AuthApiDoc::openapi());
+    openapi.merge(feat_profile::http::ProfileApiDoc::openapi());
 
     openapi.components = Some({
         let mut c = openapi.components.take().unwrap_or_default();
@@ -69,6 +75,7 @@ pub fn all_routes(container: Arc<Container>) -> axum::Router {
     Router::new()
         .merge(SwaggerUi::new("/docs").url("/docs/openapi.json", openapi))
         .merge(feat_auth::http::routes::routes().with_state(auth_state))
+        .merge(feat_profile::http::routes::routes().with_state(profile_state))
 
         .layer(trace_layer())
         .layer(request_id_layer())

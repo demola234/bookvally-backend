@@ -64,6 +64,7 @@ chrono       = { version = "0.4.45", features = ["serde"] }
 chrono-tz    = { version = "0.10.4", features = ["serde"] }
 rust_decimal         = { version = "1", features = ["serde"] }
 rust_decimal_macros  = "1.30.0"
+bitflags = {version = "2.13.0"}
 
 # auth
 jsonwebtoken = { version = "10.4.0", features = ["rust_crypto"] }
