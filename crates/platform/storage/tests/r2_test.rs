@@ -55,3 +55,15 @@ async fn test_presign_upload() {
     assert!(result.upload_url.contains("test/avatar.jpg"));
     assert!(result.cdn_url.contains("test/avatar.jpg"));
 }
+
+#[tokio::test]
+async fn test_download() {
+    let storage = CloudR2Storage::new(&config()).await.unwrap();
+    let key = "test/download.txt";
+
+    storage.upload(key, b"Hello, world!".to_vec(), "text/plain").await.unwrap();
+    let bytes = storage.download(key).await.unwrap();
+    
+    assert_eq!(bytes, b"Hello, world!");
+    storage.delete(key).await.unwrap();
+}

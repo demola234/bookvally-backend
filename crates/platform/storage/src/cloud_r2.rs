@@ -81,6 +81,24 @@ impl StorageService for CloudR2Storage {
         })
     }
 
+    async fn download(&self, key: &str) -> Result<Vec<u8>, StorageError> {
+        let resp = self.client
+            .get_object()
+            .bucket(&self.bucket)
+            .key(key)
+            .send()
+            .await
+            .map_err(|e| StorageError::NotFound(e.to_string()))?;
+
+        let bytes = resp
+            .body
+            .collect()
+            .await
+            .map_err(|e| StorageError::InternalError(e.to_string()))?;
+
+        Ok(bytes.into_bytes().to_vec())
+    }
+
     async fn delete(&self, key: &str) -> Result<(), StorageError> {
         self.client
             .delete_object()
