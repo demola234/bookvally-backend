@@ -2,7 +2,6 @@ use async_trait::async_trait;
 use chrono::DateTime;
 use chrono::Utc;
 use uuid::Uuid;
-use kernel::UserId;
 use persistence::PgPool;
 
 use crate::application::ports::CatalogRepository;

@@ -27,3 +27,4 @@ reqwest     = { workspace = true }
 utoipa      = { workspace = true }
 epub        = { workspace = true }
 lopdf       = { workspace = true }
+cache       = { workspace = true }

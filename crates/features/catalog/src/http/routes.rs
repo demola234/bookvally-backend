@@ -1,11 +1,11 @@
-use axum::{Json, Router, extract::{Path, State}, http::StatusCode, routing::{delete, get, post}};
+use axum::{Json, Router, extract::{Path, State}, http::StatusCode, routing::{get, post}};
 use auth_kit::JwtAuthExtractor;
+use cache::cache::{del, get_json, set_json};
 use http_kit::{v1, HttpError};
 use kernel::AppError;
 use uuid::Uuid;
 
 use crate::application::{
-    add_book::AddBook,
     get_book::GetBook,
     import_from_cloud::{ImportFromCloud, ImportFromCloudInput},
     parse_file::ParseFile,
@@ -14,13 +14,19 @@ use crate::application::{
 use crate::http::dto::*;
 use crate::wiring::CatalogState;
 
+const BOOKS_LIST_TTL: usize = 300;
+const BOOK_TTL:       usize = 600;
+
+fn books_list_key(user_id: Uuid) -> String { format!("catalog:books:{user_id}") }
+fn book_key(id: Uuid) -> String            { format!("catalog:book:{id}") }
+
 pub fn routes() -> Router<CatalogState> {
     v1(Router::new()
-        .route("/catalog/books/import",      post(import_book))
-        .route("/catalog/books",             get(list_books))
-        .route("/catalog/books/{id}",        get(get_book).delete(delete_book))
-        .route("/catalog/books/{id}/cover",  get(get_book_cover))
-        .route("/catalog/books/{id}/parse",  post(parse_book))
+        .route("/catalog/books/import",     post(import_book))
+        .route("/catalog/books",            get(list_books))
+        .route("/catalog/books/{id}",       get(get_book).delete(delete_book))
+        .route("/catalog/books/{id}/cover", get(get_book_cover))
+        .route("/catalog/books/{id}/parse", post(parse_book))
     )
 }
 
@@ -34,22 +40,25 @@ pub fn routes() -> Router<CatalogState> {
     )
 )]
 pub async fn import_book(
-    State(state): State<CatalogState>,
+    State(mut state): State<CatalogState>,
     JwtAuthExtractor(user): JwtAuthExtractor,
     Json(body): Json<ImportBookRequest>,
 ) -> Result<(StatusCode, Json<ImportBookResponse>), HttpError> {
-    let uc = ImportFromCloud {
+    let user_id = *user.id().as_uuid();
+
+    let file_id = ImportFromCloud {
         repository: state.repo,
         importer:   state.importer,
-    };
-
-    let file_id = uc.execute(*user.id().as_uuid(), ImportFromCloudInput {
+    }
+    .execute(user_id, ImportFromCloudInput {
         source_url:     body.source_url,
         file_name:      body.file_name,
         cloud_provider: body.cloud_provider,
     })
     .await
     .map_err(HttpError::from)?;
+
+    del(&mut state.redis, &books_list_key(user_id)).await.ok();
 
     Ok((StatusCode::ACCEPTED, Json(ImportBookResponse {
         file_id,
@@ -63,16 +72,26 @@ pub async fn import_book(
     responses((status = 200, body = Vec<BookResponse>), (status = 401, description = "Unauthorized"))
 )]
 pub async fn list_books(
-    State(state): State<CatalogState>,
+    State(mut state): State<CatalogState>,
     JwtAuthExtractor(user): JwtAuthExtractor,
 ) -> Result<Json<Vec<BookResponse>>, HttpError> {
+    let user_id = *user.id().as_uuid();
+    let key = books_list_key(user_id);
+
+    if let Ok(Some(cached)) = get_json::<Vec<BookResponse>>(&mut state.redis, &key).await {
+        return Ok(Json(cached));
+    }
+
     let books = state.repo
-        .list_books(*user.id().as_uuid())
+        .list_books(user_id)
         .await
         .map_err(AppError::internal)
         .map_err(HttpError::from)?;
 
-    Ok(Json(books.into_iter().map(BookResponse::from).collect()))
+    let response: Vec<BookResponse> = books.into_iter().map(BookResponse::from).collect();
+    set_json(&mut state.redis, &key, &response, BOOKS_LIST_TTL).await.ok();
+
+    Ok(Json(response))
 }
 
 #[utoipa::path(get, path = "/v1/catalog/books/{id}", tag = "catalog",
@@ -81,16 +100,25 @@ pub async fn list_books(
     responses((status = 200, body = BookResponse), (status = 404, description = "Not found"))
 )]
 pub async fn get_book(
-    State(state): State<CatalogState>,
+    State(mut state): State<CatalogState>,
     JwtAuthExtractor(_user): JwtAuthExtractor,
     Path(id): Path<Uuid>,
 ) -> Result<Json<BookResponse>, HttpError> {
+    let key = book_key(id);
+
+    if let Ok(Some(cached)) = get_json::<BookResponse>(&mut state.redis, &key).await {
+        return Ok(Json(cached));
+    }
+
     let book = GetBook { repository: state.repo }
         .execute(&id)
         .await
         .map_err(HttpError::from)?;
 
-    Ok(Json(BookResponse::from(book)))
+    let response = BookResponse::from(book);
+    set_json(&mut state.redis, &key, &response, BOOK_TTL).await.ok();
+
+    Ok(Json(response))
 }
 
 #[utoipa::path(delete, path = "/v1/catalog/books/{id}", tag = "catalog",
@@ -99,15 +127,20 @@ pub async fn get_book(
     responses((status = 204, description = "Deleted"), (status = 404, description = "Not found"))
 )]
 pub async fn delete_book(
-    State(state): State<CatalogState>,
-    JwtAuthExtractor(_user): JwtAuthExtractor,
+    State(mut state): State<CatalogState>,
+    JwtAuthExtractor(user): JwtAuthExtractor,
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, HttpError> {
+    let user_id = *user.id().as_uuid();
+
     state.repo
         .delete_book(&id)
         .await
         .map_err(AppError::internal)
         .map_err(HttpError::from)?;
+
+    del(&mut state.redis, &book_key(id)).await.ok();
+    del(&mut state.redis, &books_list_key(user_id)).await.ok();
 
     Ok(StatusCode::NO_CONTENT)
 }
@@ -118,16 +151,25 @@ pub async fn delete_book(
     responses((status = 200, body = String, description = "Cover URL"), (status = 404, description = "Not found"))
 )]
 pub async fn get_book_cover(
-    State(state): State<CatalogState>,
+    State(mut state): State<CatalogState>,
     JwtAuthExtractor(_user): JwtAuthExtractor,
     Path(id): Path<Uuid>,
 ) -> Result<Json<serde_json::Value>, HttpError> {
+    let key = book_key(id);
+
+    if let Ok(Some(cached)) = get_json::<BookResponse>(&mut state.redis, &key).await {
+        return Ok(Json(serde_json::json!({ "cover_url": cached.cover_url })));
+    }
+
     let book = GetBook { repository: state.repo }
         .execute(&id)
         .await
         .map_err(HttpError::from)?;
 
-    Ok(Json(serde_json::json!({ "cover_url": book.cover_url })))
+    let response = BookResponse::from(book);
+    set_json(&mut state.redis, &key, &response, BOOK_TTL).await.ok();
+
+    Ok(Json(serde_json::json!({ "cover_url": response.cover_url })))
 }
 
 #[utoipa::path(post, path = "/v1/catalog/books/{id}/parse", tag = "catalog",
@@ -136,17 +178,22 @@ pub async fn get_book_cover(
     responses((status = 202, description = "Parsing started"), (status = 404, description = "Not found"))
 )]
 pub async fn parse_book(
-    State(state): State<CatalogState>,
+    State(mut state): State<CatalogState>,
     JwtAuthExtractor(user): JwtAuthExtractor,
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, HttpError> {
+    let user_id = *user.id().as_uuid();
+
     ParseFile {
         repository: state.repo,
         parser:     state.parser,
     }
-    .execute(id, *user.id().as_uuid())
+    .execute(id, user_id)
     .await
     .map_err(HttpError::from)?;
+
+    del(&mut state.redis, &book_key(id)).await.ok();
+    del(&mut state.redis, &books_list_key(user_id)).await.ok();
 
     Ok(StatusCode::ACCEPTED)
 }

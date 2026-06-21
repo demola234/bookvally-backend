@@ -58,6 +58,7 @@ pub fn all_routes(container: Arc<Container>) -> axum::Router {
             container.db.clone(),
             container.jwt.clone(),
             s.clone(),
+            container.redis.clone(),
         )
     });
 

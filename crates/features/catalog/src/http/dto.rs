@@ -29,7 +29,7 @@ pub struct UpdateBookRequest {
 
 // Responses
 
-#[derive(Serialize, ToSchema)]
+#[derive(Serialize, Deserialize, ToSchema)]
 pub struct BookResponse {
     pub id:               Uuid,
     pub title:            String,

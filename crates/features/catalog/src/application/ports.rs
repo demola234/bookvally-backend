@@ -1,6 +1,5 @@
 use async_trait::async_trait;
 use uuid::Uuid;
-use kernel::UserId;
 use crate::domain::book::Book;
 use crate::domain::book_file::{BookFile, BookFormat};
 

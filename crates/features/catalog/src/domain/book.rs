@@ -1,9 +1,10 @@
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 /// Shared book metadata — not user-specific.
 /// Per-user file records (format, storage key, import status) live in `BookFile`.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Book {
     pub id:               Uuid,
     pub title:            String,
