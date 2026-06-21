@@ -4,6 +4,7 @@ use async_trait::async_trait;
 pub trait StorageService: Send + Sync {
     async fn upload(&self, key: &str, bytes: Vec<u8>, content_type: &str) -> Result<String, StorageError>;
     async fn presign_upload(&self, key: &str, content_type: &str, ttl_secs: u32) -> Result<PresignedUpload, StorageError>;
+    async fn download(&self, key: &str) -> Result<Vec<u8>, StorageError>;
     async fn delete(&self, key: &str) -> Result<(), StorageError>;
 }
 

@@ -20,4 +20,10 @@ thiserror   = { workspace = true }
 async-trait = { workspace = true }
 tracing     = { workspace = true }
 sqlx        = { workspace = true }
+anyhow      = { workspace = true }
 tokio       = { workspace = true }
+storage     = { workspace = true }
+reqwest     = { workspace = true }
+utoipa      = { workspace = true }
+epub        = { workspace = true }
+lopdf       = { workspace = true }
