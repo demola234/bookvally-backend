@@ -13,6 +13,7 @@ members = [
     "crates/platform/messaging",
     "crates/platform/persistence",
     "crates/platform/telemetry",
+    "crates/platform/storage",
     # features
     "crates/features/auth",
     "crates/features/catalog",
@@ -51,6 +52,10 @@ serde_json   = "1.0.150"
 
 # db
 sqlx         = { version = "0.8.5", features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono", "migrate"] }
+
+# storage
+aws-config = { version = "1.8.18" }
+aws-sdk-s3 = { version = "1.137.0", features = ["behavior-version-latest"] }
 
 # redis
 redis        = { version = "0.26.1", features = ["tokio-comp", "connection-manager"] }
@@ -103,6 +108,7 @@ http-kit     = { path = "crates/platform/http-kit" }
 messaging    = { path = "crates/platform/messaging" }
 persistence  = { path = "crates/platform/persistence" }
 telemetry    = { path = "crates/platform/telemetry" }
+storage      = { path = "crates/platform/storage" }
 
 # workspace-internal features
 feat-auth         = { path = "crates/features/auth" }

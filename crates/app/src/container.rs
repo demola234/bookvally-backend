@@ -4,10 +4,10 @@ use auth_kit::JwtConfig;
 use cache::ConnectionManager;
 use messaging::KafkaProducer;
 use persistence::PgPool;
+use storage::{CloudR2Storage, CloudR2StorageConfig, StorageService};
 
 use crate::config::AppConfig;
 
-/// Shared application state — cloned cheaply via Arc into every handler.
 #[derive(Clone)]
 pub struct Container {
     pub config:   AppConfig,
@@ -15,6 +15,7 @@ pub struct Container {
     pub redis:    ConnectionManager,
     pub kafka:    Arc<KafkaProducer>,
     pub jwt:      JwtConfig,
+    pub storage:  Option<Arc<dyn StorageService>>,
 }
 
 impl Container {
@@ -36,11 +37,28 @@ impl Container {
             config.auth.refresh_ttl_secs as i64,
         );
 
-        Ok(Arc::new(Self { config, db, redis, kafka, jwt }))
+        let storage: Option<Arc<dyn StorageService>> = match &config.storage {
+            Some(s) => {
+                let r2 = CloudR2Storage::new(&CloudR2StorageConfig {
+                    endpoint:          s.endpoint.clone(),
+                    bucket:            s.bucket.clone(),
+                    region:            s.region.clone(),
+                    access_key_id:     s.access_key_id.clone(),
+                    secret_access_key: s.secret_access_key.clone(),
+                    public_url:        s.public_url.clone(),
+                }).await?;
+                Some(Arc::new(r2))
+            }
+            None => {
+                tracing::warn!("no storage config found");
+                None
+            }
+        };
+
+        Ok(Arc::new(Self { config, db, redis, kafka, jwt, storage }))
     }
 }
 
-/// Allow JwtAuthExtractor to pull JwtConfig from Container state.
 impl AsRef<JwtConfig> for Container {
     fn as_ref(&self) -> &JwtConfig {
         &self.jwt

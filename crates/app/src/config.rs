@@ -55,10 +55,12 @@ pub struct TelemetryConfig {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct StorageConfig {
-    pub bucket: String,
-    pub region: String,
-    pub access_key_id: String,
+    pub endpoint:          String,
+    pub bucket:            String,
+    pub region:            String,
+    pub access_key_id:     String,
     pub secret_access_key: String,
+    pub public_url:        Option<String>,
 }
 
 // root config
