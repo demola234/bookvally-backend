@@ -1,7 +1,7 @@
-use async_trait::async_trait;
-use uuid::Uuid;
 use crate::domain::book::Book;
 use crate::domain::book_file::{BookFile, BookFormat};
+use async_trait::async_trait;
+use uuid::Uuid;
 
 #[async_trait]
 pub trait CatalogRepository: Send + Sync {
@@ -16,7 +16,11 @@ pub trait CatalogRepository: Send + Sync {
 
     // book files
     async fn create_book_file(&self, file: &BookFile) -> anyhow::Result<Uuid>;
-    async fn find_book_file(&self, file_id: Uuid, user_id: Uuid) -> anyhow::Result<Option<BookFile>>;
+    async fn find_book_file(
+        &self,
+        file_id: Uuid,
+        user_id: Uuid,
+    ) -> anyhow::Result<Option<BookFile>>;
     async fn list_book_files(&self, user_id: Uuid) -> anyhow::Result<Vec<BookFile>>;
     async fn update_book_file(&self, file: &BookFile) -> anyhow::Result<()>;
     async fn delete_book_file(&self, file_id: Uuid, user_id: Uuid) -> anyhow::Result<()>;
@@ -28,9 +32,9 @@ pub trait FileParser: Send + Sync {
 }
 
 pub struct ParsedBook {
-    pub title:       Option<String>,
-    pub author:      Option<String>,
-    pub page_count:  Option<i32>,
-    pub language:    Option<String>,
+    pub title: Option<String>,
+    pub author: Option<String>,
+    pub page_count: Option<i32>,
+    pub language: Option<String>,
     pub cover_bytes: Option<Vec<u8>>,
 }

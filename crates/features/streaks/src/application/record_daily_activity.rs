@@ -4,11 +4,11 @@ use chrono::NaiveDate;
 use rust_decimal::Decimal;
 use uuid::Uuid;
 
-use crate::{application::ports::StreakRepository};
+use crate::application::ports::StreakRepository;
 
 pub struct RecordDailyActivity<R> {
-    repo:          Arc<R>,
-    goal_minutes:  Decimal,
+    repo: Arc<R>,
+    goal_minutes: Decimal,
 }
 
 impl<R: StreakRepository> RecordDailyActivity<R> {
@@ -57,18 +57,21 @@ mod tests {
 
     #[derive(Default)]
     struct MockRepo {
-        streak:         Mutex<Option<Streak>>,
-        activities:     Mutex<std::collections::HashMap<NaiveDate, DailyActivity>>,
-        freeze_count:   Mutex<i64>,
-        freeze_used:    Mutex<Option<NaiveDate>>,
-        saves_streak:   Mutex<u32>,
+        streak: Mutex<Option<Streak>>,
+        activities: Mutex<std::collections::HashMap<NaiveDate, DailyActivity>>,
+        freeze_count: Mutex<i64>,
+        freeze_used: Mutex<Option<NaiveDate>>,
+        saves_streak: Mutex<u32>,
         saves_activity: Mutex<u32>,
     }
 
     #[async_trait]
     impl StreakRepository for MockRepo {
         async fn get_or_create(&self, user_id: Uuid) -> anyhow::Result<Streak> {
-            Ok(self.streak.lock().unwrap()
+            Ok(self
+                .streak
+                .lock()
+                .unwrap()
                 .clone()
                 .unwrap_or_else(|| Streak::new(user_id)))
         }
@@ -79,15 +82,25 @@ mod tests {
             Ok(())
         }
 
-        async fn get_or_create_activity(&self, user_id: Uuid, date: NaiveDate) -> anyhow::Result<DailyActivity> {
-            Ok(self.activities.lock().unwrap()
+        async fn get_or_create_activity(
+            &self,
+            user_id: Uuid,
+            date: NaiveDate,
+        ) -> anyhow::Result<DailyActivity> {
+            Ok(self
+                .activities
+                .lock()
+                .unwrap()
                 .get(&date)
                 .cloned()
                 .unwrap_or_else(|| DailyActivity::new(user_id, date)))
         }
 
         async fn save_activity(&self, a: &DailyActivity) -> anyhow::Result<()> {
-            self.activities.lock().unwrap().insert(a.activity_date, a.clone());
+            self.activities
+                .lock()
+                .unwrap()
+                .insert(a.activity_date, a.clone());
             *self.saves_activity.lock().unwrap() += 1;
             Ok(())
         }
@@ -102,9 +115,15 @@ mod tests {
         }
     }
 
-    fn date(d: u32) -> NaiveDate { NaiveDate::from_ymd_opt(2026, 6, d).unwrap() }
-    fn uid()        -> Uuid       { Uuid::new_v4() }
-    fn goal()       -> Decimal    { dec!(15) }
+    fn date(d: u32) -> NaiveDate {
+        NaiveDate::from_ymd_opt(2026, 6, d).unwrap()
+    }
+    fn uid() -> Uuid {
+        Uuid::new_v4()
+    }
+    fn goal() -> Decimal {
+        dec!(15)
+    }
 
     fn use_case(repo: Arc<MockRepo>) -> RecordDailyActivity<MockRepo> {
         RecordDailyActivity::new(repo, goal())
@@ -115,12 +134,16 @@ mod tests {
     #[tokio::test]
     async fn below_goal_saves_activity_but_not_streak() {
         let repo = Arc::new(MockRepo::default());
-        let uc   = use_case(repo.clone());
+        let uc = use_case(repo.clone());
 
         uc.execute(uid(), date(1), dec!(10), 5, 20).await.unwrap();
 
         assert_eq!(*repo.saves_activity.lock().unwrap(), 1);
-        assert_eq!(*repo.saves_streak.lock().unwrap(), 0, "streak must not be touched below goal");
+        assert_eq!(
+            *repo.saves_streak.lock().unwrap(),
+            0,
+            "streak must not be touched below goal"
+        );
     }
 
     // ── goal newly met ───────────────────────────────────────
@@ -128,7 +151,7 @@ mod tests {
     #[tokio::test]
     async fn meeting_goal_advances_streak() {
         let repo = Arc::new(MockRepo::default());
-        let uc   = use_case(repo.clone());
+        let uc = use_case(repo.clone());
 
         uc.execute(uid(), date(1), dec!(15), 10, 30).await.unwrap();
 
@@ -139,9 +162,9 @@ mod tests {
 
     #[tokio::test]
     async fn meeting_goal_across_two_sessions_advances_streak_once() {
-        let uid  = uid();
+        let uid = uid();
         let repo = Arc::new(MockRepo::default());
-        let uc   = use_case(repo.clone());
+        let uc = use_case(repo.clone());
 
         // First session: 10 min (not enough)
         uc.execute(uid, date(1), dec!(10), 5, 10).await.unwrap();
@@ -153,14 +176,18 @@ mod tests {
 
         // Third session same day: already met, no extra advance
         uc.execute(uid, date(1), dec!(5), 2, 10).await.unwrap();
-        assert_eq!(*repo.saves_streak.lock().unwrap(), 1, "streak advanced only once per day");
+        assert_eq!(
+            *repo.saves_streak.lock().unwrap(),
+            1,
+            "streak advanced only once per day"
+        );
     }
 
     #[tokio::test]
     async fn streak_advances_on_consecutive_days() {
-        let uid  = uid();
+        let uid = uid();
         let repo = Arc::new(MockRepo::default());
-        let uc   = use_case(repo.clone());
+        let uc = use_case(repo.clone());
 
         uc.execute(uid, date(1), dec!(20), 0, 0).await.unwrap();
         uc.execute(uid, date(2), dec!(20), 0, 0).await.unwrap();
@@ -175,14 +202,20 @@ mod tests {
 
     #[tokio::test]
     async fn activity_accumulates_across_sessions() {
-        let uid  = uid();
+        let uid = uid();
         let repo = Arc::new(MockRepo::default());
-        let uc   = use_case(repo.clone());
+        let uc = use_case(repo.clone());
 
         uc.execute(uid, date(1), dec!(8), 10, 15).await.unwrap();
         uc.execute(uid, date(1), dec!(9), 12, 18).await.unwrap();
 
-        let a = repo.activities.lock().unwrap().get(&date(1)).cloned().unwrap();
+        let a = repo
+            .activities
+            .lock()
+            .unwrap()
+            .get(&date(1))
+            .cloned()
+            .unwrap();
         assert_eq!(a.minutes, dec!(17));
         assert_eq!(a.pages, 22);
         assert_eq!(a.xp_earned, 33);

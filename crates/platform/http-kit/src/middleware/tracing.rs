@@ -8,20 +8,19 @@ pub fn trace_layer() -> TraceLayer<
     DefaultOnRequest,
     DefaultOnResponse,
 > {
-    TraceLayer::new_for_http()
-        .make_span_with(|request: &Request<axum::body::Body>| {
-            let request_id = request
-                .headers()
-                .get("x-request-id")
-                .and_then(|v| v.to_str().ok())
-                .unwrap_or("unknown");
+    TraceLayer::new_for_http().make_span_with(|request: &Request<axum::body::Body>| {
+        let request_id = request
+            .headers()
+            .get("x-request-id")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("unknown");
 
-            tracing::span!(
-                Level::INFO,
-                "http_request",
-                method     = %request.method(),
-                uri        = %request.uri(),
-                request_id = request_id,
-            )
-        })
+        tracing::span!(
+            Level::INFO,
+            "http_request",
+            method     = %request.method(),
+            uri        = %request.uri(),
+            request_id = request_id,
+        )
+    })
 }

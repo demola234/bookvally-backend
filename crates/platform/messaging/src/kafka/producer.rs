@@ -1,8 +1,8 @@
-use std::time::Duration;
+use kernel::EventEnvelope;
 use rdkafka::producer::{FutureProducer, FutureRecord};
 use rdkafka::ClientConfig;
-use serde::{Serialize, de::DeserializeOwned};
-use kernel::EventEnvelope;
+use serde::{de::DeserializeOwned, Serialize};
+use std::time::Duration;
 
 use super::codec;
 

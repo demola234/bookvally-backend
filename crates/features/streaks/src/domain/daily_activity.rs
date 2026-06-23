@@ -5,11 +5,11 @@ use uuid::Uuid;
 /// Per-user per-day rollup. Source of truth for streak advancement.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DailyActivity {
-    pub user_id:        Uuid,
-    pub activity_date:  NaiveDate,
-    pub minutes:        Decimal,
-    pub pages:          i32,
-    pub xp_earned:      i32,
+    pub user_id: Uuid,
+    pub activity_date: NaiveDate,
+    pub minutes: Decimal,
+    pub pages: i32,
+    pub xp_earned: i32,
     pub met_daily_goal: bool,
 }
 
@@ -48,9 +48,15 @@ mod tests {
     use super::*;
     use rust_decimal_macros::dec;
 
-    fn today() -> NaiveDate { NaiveDate::from_ymd_opt(2026, 6, 16).unwrap() }
-    fn uid()   -> Uuid      { Uuid::new_v4() }
-    fn goal()  -> Decimal   { dec!(15) }   // 15 minutes
+    fn today() -> NaiveDate {
+        NaiveDate::from_ymd_opt(2026, 6, 16).unwrap()
+    }
+    fn uid() -> Uuid {
+        Uuid::new_v4()
+    }
+    fn goal() -> Decimal {
+        dec!(15)
+    } // 15 minutes
 
     // ── accumulate ───────────────────────────────────────────
 
@@ -91,12 +97,12 @@ mod tests {
     fn accumulate_returns_newly_met_only_on_crossing() {
         // First session doesn't cross threshold, second does.
         let mut a = DailyActivity::new(uid(), today());
-        let first  = a.accumulate(dec!(10), 0, 0, goal());
+        let first = a.accumulate(dec!(10), 0, 0, goal());
         let second = a.accumulate(dec!(6), 0, 0, goal()); // now 16 >= 15
-        let third  = a.accumulate(dec!(5), 0, 0, goal()); // already met
-        assert!(!first,  "10 min is not enough to meet goal");
-        assert!(second,  "crossing the threshold should return true once");
-        assert!(!third,  "already met — no new crossing event");
+        let third = a.accumulate(dec!(5), 0, 0, goal()); // already met
+        assert!(!first, "10 min is not enough to meet goal");
+        assert!(second, "crossing the threshold should return true once");
+        assert!(!third, "already met — no new crossing event");
     }
 
     #[test]

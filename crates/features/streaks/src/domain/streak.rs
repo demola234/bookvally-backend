@@ -3,10 +3,10 @@ use uuid::Uuid;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Streak {
-    pub user_id:          Uuid,
-    pub current_length:   i32,
-    pub longest_length:   i32,
-    pub started_on:       Option<NaiveDate>,
+    pub user_id: Uuid,
+    pub current_length: i32,
+    pub longest_length: i32,
+    pub started_on: Option<NaiveDate>,
     pub last_extended_on: Option<NaiveDate>,
     pub freezes_equipped: i16,
 }
@@ -91,7 +91,9 @@ mod tests {
         NaiveDate::from_ymd_opt(y, m, d).unwrap()
     }
 
-    fn user() -> Uuid { Uuid::new_v4() }
+    fn user() -> Uuid {
+        Uuid::new_v4()
+    }
 
     // ── advance ──────────────────────────────────────────────
 

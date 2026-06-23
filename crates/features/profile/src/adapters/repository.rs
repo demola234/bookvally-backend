@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use chrono::{DateTime, NaiveTime, Utc};
-use uuid::Uuid;
 use persistence::PgPool;
+use uuid::Uuid;
 
 use crate::application::ports::ProfileRepository;
 use crate::domain::{
@@ -23,105 +23,105 @@ impl PgProfileRepository {
 
 #[derive(sqlx::FromRow)]
 struct ProfileRow {
-    user_id:         Uuid,
-    bio:             Option<String>,
-    pronouns:        Option<String>,
-    location:        Option<String>,
-    banner_url:      Option<String>,
-    visibility:      String,
+    user_id: Uuid,
+    bio: Option<String>,
+    pronouns: Option<String>,
+    location: Option<String>,
+    banner_url: Option<String>,
+    visibility: String,
     favorite_genres: Option<String>,
-    reading_since:   Option<chrono::NaiveDate>,
+    reading_since: Option<chrono::NaiveDate>,
     followers_count: i32,
-    friends_count:   i32,
-    created_at:      DateTime<Utc>,
-    updated_at:      DateTime<Utc>,
+    friends_count: i32,
+    created_at: DateTime<Utc>,
+    updated_at: DateTime<Utc>,
 }
 
 impl From<ProfileRow> for Profile {
     fn from(r: ProfileRow) -> Self {
         Self {
-            user_id:         r.user_id,
-            bio:             r.bio,
-            pronouns:        r.pronouns,
-            location:        r.location,
-            banner_url:      r.banner_url,
-            visibility:      match r.visibility.as_str() {
+            user_id: r.user_id,
+            bio: r.bio,
+            pronouns: r.pronouns,
+            location: r.location,
+            banner_url: r.banner_url,
+            visibility: match r.visibility.as_str() {
                 "private" => ProfileVisibility::Private,
-                _         => ProfileVisibility::Public,
+                _ => ProfileVisibility::Public,
             },
             favorite_genres: r.favorite_genres,
-            reading_since:   r.reading_since,
+            reading_since: r.reading_since,
             followers_count: r.followers_count,
-            friends_count:   r.friends_count,
-            created_at:      r.created_at,
-            updated_at:      r.updated_at,
+            friends_count: r.friends_count,
+            created_at: r.created_at,
+            updated_at: r.updated_at,
         }
     }
 }
 
 #[derive(sqlx::FromRow)]
 struct UserSettingsRow {
-    user_id:                 Uuid,
-    app_theme:               String,
-    reader_theme:            String,
-    reader_font_family:      Option<String>,
-    reader_font_size:        i16,
-    default_voice_id:        Option<Uuid>,
-    default_speed:           f32,
-    default_pitch:           f32,
-    sleep_timer_minutes:     Option<i16>,
-    daily_goal_minutes:      i16,
-    activity_sharing:        bool,
+    user_id: Uuid,
+    app_theme: String,
+    reader_theme: String,
+    reader_font_family: Option<String>,
+    reader_font_size: i16,
+    default_voice_id: Option<Uuid>,
+    default_speed: f32,
+    default_pitch: f32,
+    sleep_timer_minutes: Option<i16>,
+    daily_goal_minutes: i16,
+    activity_sharing: bool,
     contact_matching_opt_in: bool,
-    updated_at:              DateTime<Utc>,
+    updated_at: DateTime<Utc>,
 }
 
 impl From<UserSettingsRow> for UserSettings {
     fn from(r: UserSettingsRow) -> Self {
         Self {
-            user_id:                 r.user_id,
-            app_theme:               match r.app_theme.as_str() {
+            user_id: r.user_id,
+            app_theme: match r.app_theme.as_str() {
                 "dark" => AppTheme::Dark,
-                _      => AppTheme::Light,
+                _ => AppTheme::Light,
             },
-            reader_theme:            match r.reader_theme.as_str() {
+            reader_theme: match r.reader_theme.as_str() {
                 "dark" => ReaderTheme::Dark,
-                _      => ReaderTheme::Light,
+                _ => ReaderTheme::Light,
             },
-            reader_font_family:      r.reader_font_family,
-            reader_font_size:        r.reader_font_size,
-            default_voice_id:        r.default_voice_id,
-            default_speed:           r.default_speed,
-            default_pitch:           r.default_pitch,
-            sleep_timer_minutes:     r.sleep_timer_minutes,
-            daily_goal_minutes:      r.daily_goal_minutes,
-            activity_sharing:        r.activity_sharing,
+            reader_font_family: r.reader_font_family,
+            reader_font_size: r.reader_font_size,
+            default_voice_id: r.default_voice_id,
+            default_speed: r.default_speed,
+            default_pitch: r.default_pitch,
+            sleep_timer_minutes: r.sleep_timer_minutes,
+            daily_goal_minutes: r.daily_goal_minutes,
+            activity_sharing: r.activity_sharing,
             contact_matching_opt_in: r.contact_matching_opt_in,
-            updated_at:              r.updated_at,
+            updated_at: r.updated_at,
         }
     }
 }
 
 #[derive(sqlx::FromRow)]
 struct ReminderRow {
-    id:           Uuid,
-    user_id:      Uuid,
-    time_local:   NaiveTime,
+    id: Uuid,
+    user_id: Uuid,
+    time_local: NaiveTime,
     days_of_week: i16,
-    enabled:      bool,
-    created_at:   DateTime<Utc>,
+    enabled: bool,
+    created_at: DateTime<Utc>,
 }
 
 impl From<ReminderRow> for Reminder {
     fn from(r: ReminderRow) -> Self {
         Self {
-            id:           r.id,
-            user_id:      r.user_id,
-            time_local:   r.time_local,
+            id: r.id,
+            user_id: r.user_id,
+            time_local: r.time_local,
             days_of_week: DaysOfWeek::from_bits(r.days_of_week),
-            type_:        crate::domain::reminder::ReminderType::Daily,
-            enabled:      r.enabled,
-            created_at:   r.created_at,
+            type_: crate::domain::reminder::ReminderType::Daily,
+            enabled: r.enabled,
+            created_at: r.created_at,
         }
     }
 }
@@ -162,7 +162,7 @@ impl ProfileRepository for PgProfileRepository {
 
     async fn upsert_profile(&self, profile: &Profile) -> anyhow::Result<()> {
         let visibility = match profile.visibility {
-            ProfileVisibility::Public  => "public",
+            ProfileVisibility::Public => "public",
             ProfileVisibility::Private => "private",
         };
 
@@ -238,11 +238,11 @@ impl ProfileRepository for PgProfileRepository {
     async fn upsert_settings(&self, settings: &UserSettings) -> anyhow::Result<()> {
         let app_theme = match settings.app_theme {
             AppTheme::Light => "light",
-            AppTheme::Dark  => "dark",
+            AppTheme::Dark => "dark",
         };
         let reader_theme = match settings.reader_theme {
             ReaderTheme::Light => "light",
-            ReaderTheme::Dark  => "dark",
+            ReaderTheme::Dark => "dark",
         };
 
         sqlx::query(
@@ -333,13 +333,11 @@ impl ProfileRepository for PgProfileRepository {
     }
 
     async fn delete_reminder(&self, reminder_id: Uuid, user_id: Uuid) -> anyhow::Result<()> {
-        sqlx::query(
-            "DELETE FROM reminders WHERE id = $1 AND user_id = $2",
-        )
-        .bind(reminder_id)
-        .bind(user_id)
-        .execute(&self.pool)
-        .await?;
+        sqlx::query("DELETE FROM reminders WHERE id = $1 AND user_id = $2")
+            .bind(reminder_id)
+            .bind(user_id)
+            .execute(&self.pool)
+            .await?;
 
         Ok(())
     }

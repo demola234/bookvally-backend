@@ -1,9 +1,9 @@
 pub mod dto;
 pub mod routes;
 
-use utoipa::OpenApi;
 use dto::*;
 use routes::*;
+use utoipa::OpenApi;
 
 #[derive(OpenApi)]
 #[openapi(

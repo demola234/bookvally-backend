@@ -1,17 +1,23 @@
-use std::future::Future;
-use axum::{extract::FromRequestParts, http::{request::Parts, StatusCode}};
 use axum::Json;
-use serde_json::json;
+use axum::{
+    extract::FromRequestParts,
+    http::{request::Parts, StatusCode},
+};
 use kernel::{AuthUser, UserId};
+use serde_json::json;
+use std::future::Future;
 
-use crate::jwt::{JwtConfig, decode_access};
+use crate::jwt::{decode_access, JwtConfig};
 
 pub struct JwtAuthExtractor(pub AuthUser);
 
 type Rejection = (StatusCode, Json<serde_json::Value>);
 
 fn reject() -> Rejection {
-    (StatusCode::UNAUTHORIZED, Json(json!({"error": "unauthorized"})))
+    (
+        StatusCode::UNAUTHORIZED,
+        Json(json!({"error": "unauthorized"})),
+    )
 }
 
 impl<S> FromRequestParts<S> for JwtAuthExtractor

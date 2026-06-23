@@ -1,8 +1,8 @@
 use async_trait::async_trait;
 use chrono::DateTime;
 use chrono::Utc;
-use uuid::Uuid;
 use persistence::PgPool;
+use uuid::Uuid;
 
 use crate::application::ports::CatalogRepository;
 use crate::domain::book::Book;
@@ -19,84 +19,81 @@ impl PgCatalogRepository {
     }
 }
 
-
 #[derive(sqlx::FromRow)]
 struct BookRow {
-    id:               Uuid,
-    title:            String,
-    author:           Option<String>,
-    published_year:   Option<i16>,
-    isbn:             Option<String>,
-    genre:            Option<String>,
-    synopsis:         Option<String>,
-    total_pages:      Option<i32>,
-    cover_url:        Option<String>,
+    id: Uuid,
+    title: String,
+    author: Option<String>,
+    published_year: Option<i16>,
+    isbn: Option<String>,
+    genre: Option<String>,
+    synopsis: Option<String>,
+    total_pages: Option<i32>,
+    cover_url: Option<String>,
     is_public_domain: bool,
-    metadata_source:  Option<String>,
-    created_at:       DateTime<Utc>,
+    metadata_source: Option<String>,
+    created_at: DateTime<Utc>,
 }
 
 impl From<BookRow> for Book {
     fn from(r: BookRow) -> Self {
         Self {
-            id:               r.id,
-            title:            r.title,
-            author:           r.author,
-            published_year:   r.published_year,
-            isbn:             r.isbn,
-            genre:            r.genre,
-            synopsis:         r.synopsis,
-            total_pages:      r.total_pages,
-            cover_url:        r.cover_url,
+            id: r.id,
+            title: r.title,
+            author: r.author,
+            published_year: r.published_year,
+            isbn: r.isbn,
+            genre: r.genre,
+            synopsis: r.synopsis,
+            total_pages: r.total_pages,
+            cover_url: r.cover_url,
             is_public_domain: r.is_public_domain,
-            metadata_source:  r.metadata_source,
-            created_at:       r.created_at,
+            metadata_source: r.metadata_source,
+            created_at: r.created_at,
         }
     }
 }
 
 #[derive(sqlx::FromRow)]
 struct BookFileRow {
-    id:                  Uuid,
-    user_id:             Uuid,
-    book_id:             Option<Uuid>,
+    id: Uuid,
+    user_id: Uuid,
+    book_id: Option<Uuid>,
     cloud_connection_id: Option<Uuid>,
-    source:              String,
-    file_name:           String,
-    format:              String,
-    size_bytes:          Option<i64>,
-    storage_key:         Option<String>,
-    import_status:       String,
-    import_progress:     Option<i16>,
-    imported_at:         Option<DateTime<Utc>>,
-    created_at:          DateTime<Utc>,
+    source: String,
+    file_name: String,
+    format: String,
+    size_bytes: Option<i64>,
+    storage_key: Option<String>,
+    import_status: String,
+    import_progress: Option<i16>,
+    imported_at: Option<DateTime<Utc>>,
+    created_at: DateTime<Utc>,
 }
 
 impl From<BookFileRow> for BookFile {
     fn from(r: BookFileRow) -> Self {
         Self {
-            id:                  r.id,
-            user_id:             r.user_id,
-            book_id:             r.book_id,
+            id: r.id,
+            user_id: r.user_id,
+            book_id: r.book_id,
             cloud_connection_id: r.cloud_connection_id,
-            source:              r.source,
-            file_name:           r.file_name,
-            format:              BookFormat::try_from(r.format).unwrap_or(BookFormat::Pdf),
-            size_bytes:          r.size_bytes,
-            storage_key:         r.storage_key,
-            import_status:       ImportStatus::try_from(r.import_status).unwrap_or(ImportStatus::Pending),
-            import_progress:     r.import_progress,
-            imported_at:         r.imported_at,
-            created_at:          r.created_at,
+            source: r.source,
+            file_name: r.file_name,
+            format: BookFormat::try_from(r.format).unwrap_or(BookFormat::Pdf),
+            size_bytes: r.size_bytes,
+            storage_key: r.storage_key,
+            import_status: ImportStatus::try_from(r.import_status).unwrap_or(ImportStatus::Pending),
+            import_progress: r.import_progress,
+            imported_at: r.imported_at,
+            created_at: r.created_at,
         }
     }
 }
 
-const SELECT_COLS: &str =
-    "id, title, author, published_year, isbn, genre,
+const SELECT_COLS: &str = "id, title, author, published_year, isbn, genre,
      synopsis, total_pages, cover_url, is_public_domain,
      metadata_source, created_at";
-
 
 #[async_trait]
 impl CatalogRepository for PgCatalogRepository {
@@ -125,12 +122,11 @@ impl CatalogRepository for PgCatalogRepository {
     }
 
     async fn find_book(&self, book_id: &Uuid) -> anyhow::Result<Option<Book>> {
-        let row = sqlx::query_as::<_, BookRow>(
-            &format!("SELECT {SELECT_COLS} FROM books WHERE id = $1"),
-        )
-        .bind(book_id)
-        .fetch_optional(&self.pool)
-        .await?;
+        let row =
+            sqlx::query_as::<_, BookRow>(&format!("SELECT {SELECT_COLS} FROM books WHERE id = $1"))
+                .bind(book_id)
+                .fetch_optional(&self.pool)
+                .await?;
 
         Ok(row.map(Book::from))
     }
@@ -221,14 +217,14 @@ impl CatalogRepository for PgCatalogRepository {
 
     async fn create_book_file(&self, file: &BookFile) -> anyhow::Result<Uuid> {
         let format = match file.format {
-            BookFormat::Pdf  => "pdf",
+            BookFormat::Pdf => "pdf",
             BookFormat::Epub => "epub",
         };
         let status = match file.import_status {
-            ImportStatus::Pending   => "pending",
+            ImportStatus::Pending => "pending",
             ImportStatus::Importing => "importing",
             ImportStatus::Completed => "completed",
-            ImportStatus::Failed    => "failed",
+            ImportStatus::Failed => "failed",
         };
 
         sqlx::query_scalar::<_, Uuid>(
@@ -256,7 +252,11 @@ impl CatalogRepository for PgCatalogRepository {
         .map_err(|e| anyhow::anyhow!("create_book_file: {e}"))
     }
 
-    async fn find_book_file(&self, file_id: Uuid, user_id: Uuid) -> anyhow::Result<Option<BookFile>> {
+    async fn find_book_file(
+        &self,
+        file_id: Uuid,
+        user_id: Uuid,
+    ) -> anyhow::Result<Option<BookFile>> {
         let row = sqlx::query_as::<_, BookFileRow>(
             "SELECT id, user_id, book_id, cloud_connection_id, source::text,
                     file_name, format::text, size_bytes, storage_key,
@@ -290,10 +290,10 @@ impl CatalogRepository for PgCatalogRepository {
 
     async fn update_book_file(&self, file: &BookFile) -> anyhow::Result<()> {
         let status = match file.import_status {
-            ImportStatus::Pending   => "pending",
+            ImportStatus::Pending => "pending",
             ImportStatus::Importing => "importing",
             ImportStatus::Completed => "completed",
-            ImportStatus::Failed    => "failed",
+            ImportStatus::Failed => "failed",
         };
 
         sqlx::query(

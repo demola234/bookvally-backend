@@ -1,14 +1,14 @@
 use async_trait::async_trait;
-use aws_sdk_s3::Client;
 use aws_sdk_s3::primitives::ByteStream;
+use aws_sdk_s3::Client;
 use serde::{Deserialize, Serialize};
 
 use crate::port::{PresignedUpload, StorageError, StorageService};
 
 #[derive(Debug, Clone)]
 pub struct CloudR2Storage {
-    pub client:     Client,
-    pub bucket:     String,
+    pub client: Client,
+    pub bucket: String,
     pub public_url: Option<String>,
 }
 
@@ -30,7 +30,7 @@ impl CloudR2Storage {
         let client = Client::new(&sdk_config);
         Ok(Self {
             client,
-            bucket:     config.bucket.clone(),
+            bucket: config.bucket.clone(),
             public_url: config.public_url.clone(),
         })
     }
@@ -38,14 +38,19 @@ impl CloudR2Storage {
     fn cdn_url(&self, key: &str) -> String {
         match &self.public_url {
             Some(base) => format!("{}/{}/{}", base.trim_end_matches('/'), self.bucket, key),
-            None       => format!("https://{}.r2.dev/{}", self.bucket, key),
+            None => format!("https://{}.r2.dev/{}", self.bucket, key),
         }
     }
 }
 
 #[async_trait]
 impl StorageService for CloudR2Storage {
-    async fn upload(&self, key: &str, bytes: Vec<u8>, content_type: &str) -> Result<String, StorageError> {
+    async fn upload(
+        &self,
+        key: &str,
+        bytes: Vec<u8>,
+        content_type: &str,
+    ) -> Result<String, StorageError> {
         self.client
             .put_object()
             .bucket(&self.bucket)
@@ -59,11 +64,17 @@ impl StorageService for CloudR2Storage {
         Ok(self.cdn_url(key))
     }
 
-    async fn presign_upload(&self, key: &str, content_type: &str, ttl_secs: u32) -> Result<PresignedUpload, StorageError> {
+    async fn presign_upload(
+        &self,
+        key: &str,
+        content_type: &str,
+        ttl_secs: u32,
+    ) -> Result<PresignedUpload, StorageError> {
         use aws_sdk_s3::presigning::PresigningConfig;
         use std::time::Duration;
 
-        let presigned = self.client
+        let presigned = self
+            .client
             .put_object()
             .bucket(&self.bucket)
             .key(key)
@@ -77,12 +88,13 @@ impl StorageService for CloudR2Storage {
 
         Ok(PresignedUpload {
             upload_url: presigned.uri().to_string(),
-            cdn_url:    self.cdn_url(key),
+            cdn_url: self.cdn_url(key),
         })
     }
 
     async fn download(&self, key: &str) -> Result<Vec<u8>, StorageError> {
-        let resp = self.client
+        let resp = self
+            .client
             .get_object()
             .bucket(&self.bucket)
             .key(key)
@@ -114,10 +126,10 @@ impl StorageService for CloudR2Storage {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CloudR2StorageConfig {
-    pub endpoint:          String,
-    pub bucket:            String,
-    pub region:            String,
-    pub access_key_id:     String,
+    pub endpoint: String,
+    pub bucket: String,
+    pub region: String,
+    pub access_key_id: String,
     pub secret_access_key: String,
-    pub public_url:        Option<String>,
+    pub public_url: Option<String>,
 }

@@ -5,8 +5,8 @@ use uuid::Uuid;
 #[derive(Debug, Clone, PartialEq)]
 pub struct Progress {
     pub library_item_id: Uuid,
-    pub current_page:    i32,
-    pub total_pages:     Option<i32>,
+    pub current_page: i32,
+    pub total_pages: Option<i32>,
     pub current_locator: Option<String>,
 }
 
@@ -50,8 +50,7 @@ impl Progress {
     pub fn pct(&self) -> Decimal {
         match self.total_pages {
             Some(total) if total > 0 => {
-                (Decimal::from(self.current_page) / Decimal::from(total) * dec!(100))
-                    .min(dec!(100))
+                (Decimal::from(self.current_page) / Decimal::from(total) * dec!(100)).min(dec!(100))
             }
             _ => Decimal::ZERO,
         }
@@ -68,7 +67,9 @@ impl Progress {
 mod tests {
     use super::*;
 
-    fn item() -> Uuid { Uuid::new_v4() }
+    fn item() -> Uuid {
+        Uuid::new_v4()
+    }
 
     // ── set_page ─────────────────────────────────────────────
 

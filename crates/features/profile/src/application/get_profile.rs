@@ -1,9 +1,11 @@
-use uuid::Uuid;
-use kernel::AppError;
 use crate::application::ports::ProfileRepository;
 use crate::domain::profile::Profile;
+use kernel::AppError;
+use uuid::Uuid;
 
-pub struct GetProfile<R> { pub repository: R }
+pub struct GetProfile<R> {
+    pub repository: R,
+}
 
 impl<R: ProfileRepository> GetProfile<R> {
     pub async fn execute(&self, user_id: Uuid) -> Result<Profile, AppError> {
@@ -15,7 +17,9 @@ impl<R: ProfileRepository> GetProfile<R> {
     }
 }
 
-pub struct GetPublicProfile<R> { pub repository: R }
+pub struct GetPublicProfile<R> {
+    pub repository: R,
+}
 
 impl<R: ProfileRepository> GetPublicProfile<R> {
     pub async fn execute(&self, handle: String) -> Result<Profile, AppError> {

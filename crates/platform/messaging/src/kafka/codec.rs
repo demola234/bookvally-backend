@@ -1,7 +1,9 @@
 use kernel::EventEnvelope;
-use serde::{Serialize, de::DeserializeOwned};
+use serde::{de::DeserializeOwned, Serialize};
 
-pub fn encode<T: Serialize + DeserializeOwned>(envelope: &EventEnvelope<T>) -> anyhow::Result<Vec<u8>> {
+pub fn encode<T: Serialize + DeserializeOwned>(
+    envelope: &EventEnvelope<T>,
+) -> anyhow::Result<Vec<u8>> {
     Ok(serde_json::to_vec(envelope)?)
 }
 

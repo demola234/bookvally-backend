@@ -1,4 +1,4 @@
-use redis::{AsyncCommands, aio::ConnectionManager};
+use redis::{aio::ConnectionManager, AsyncCommands};
 
 pub struct TokenBlacklist(pub ConnectionManager);
 

@@ -55,26 +55,26 @@ pub struct TelemetryConfig {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct StorageConfig {
-    pub endpoint:          String,
-    pub bucket:            String,
-    pub region:            String,
-    pub access_key_id:     String,
+    pub endpoint: String,
+    pub bucket: String,
+    pub region: String,
+    pub access_key_id: String,
     pub secret_access_key: String,
-    pub public_url:        Option<String>,
+    pub public_url: Option<String>,
 }
 
 // root config
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct AppConfig {
-    pub server:    ServerConfig,
-    pub database:  DatabaseConfig,
-    pub redis:     RedisConfig,
-    pub kafka:     KafkaConfig,
-    pub auth:      AuthConfig,
-    pub streaks:   StreaksConfig,
+    pub server: ServerConfig,
+    pub database: DatabaseConfig,
+    pub redis: RedisConfig,
+    pub kafka: KafkaConfig,
+    pub auth: AuthConfig,
+    pub streaks: StreaksConfig,
     pub telemetry: TelemetryConfig,
-    pub storage:   Option<StorageConfig>,
+    pub storage: Option<StorageConfig>,
 }
 
 impl AppConfig {

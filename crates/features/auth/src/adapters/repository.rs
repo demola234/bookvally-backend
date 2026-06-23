@@ -1,15 +1,19 @@
-use uuid::Uuid;
-use kernel::UserId;
-use persistence::PgPool;
-use async_trait::async_trait;
 use crate::application::ports::AuthRepository;
 use crate::domain::{Device, Session};
+use async_trait::async_trait;
+use kernel::UserId;
+use persistence::PgPool;
+use uuid::Uuid;
 
 #[derive(Clone)]
-pub struct PgAuthRepository { pool: PgPool }
+pub struct PgAuthRepository {
+    pool: PgPool,
+}
 
 impl PgAuthRepository {
-    pub fn new(pool: PgPool) -> Self { Self { pool } }
+    pub fn new(pool: PgPool) -> Self {
+        Self { pool }
+    }
 }
 
 #[async_trait]
@@ -25,10 +29,10 @@ impl AuthRepository for PgAuthRepository {
                JOIN users u ON u.id = oa.user_id
                WHERE oa.provider = $1::oauth_provider AND oa.provider_account_id = $2"#,
         )
-            .bind(provider)
-            .bind(provider_account_id)
-            .fetch_optional(&self.pool)
-            .await?;
+        .bind(provider)
+        .bind(provider_account_id)
+        .fetch_optional(&self.pool)
+        .await?;
 
         Ok(row.map(|(id, handle)| (UserId::from(id), handle)))
     }
@@ -55,12 +59,12 @@ impl AuthRepository for PgAuthRepository {
                )
                SELECT user_id FROM ins_oauth"#,
         )
-            .bind(handle)
-            .bind(provider)
-            .bind(provider_account_id)
-            .bind(email)
-            .fetch_one(&self.pool)
-            .await?;
+        .bind(handle)
+        .bind(provider)
+        .bind(provider_account_id)
+        .bind(email)
+        .fetch_one(&self.pool)
+        .await?;
 
         Ok(UserId::from(user_id))
     }
@@ -88,17 +92,15 @@ impl AuthRepository for PgAuthRepository {
         let row = sqlx::query_as::<_, Session>(
             r#"SELECT * FROM sessions WHERE refresh_token_hash = $1 AND revoked_at IS NULL"#,
         )
-            .bind(hash)
-            .fetch_optional(&self.pool)
-            .await?;
+        .bind(hash)
+        .fetch_optional(&self.pool)
+        .await?;
 
         Ok(row)
     }
 
     async fn revoke_session(&self, session_id: Uuid) -> anyhow::Result<()> {
-        sqlx::query(
-            r#"UPDATE sessions SET revoked_at = now() WHERE id = $1"#,
-        )
+        sqlx::query(r#"UPDATE sessions SET revoked_at = now() WHERE id = $1"#)
             .bind(session_id)
             .execute(&self.pool)
             .await?;
@@ -107,9 +109,7 @@ impl AuthRepository for PgAuthRepository {
     }
 
     async fn revoke_all_user_sessions(&self, user_id: UserId) -> anyhow::Result<()> {
-        sqlx::query(
-            r#"UPDATE sessions SET revoked_at = now() WHERE user_id = $1"#,
-        )
+        sqlx::query(r#"UPDATE sessions SET revoked_at = now() WHERE user_id = $1"#)
             .bind(*user_id.as_uuid())
             .execute(&self.pool)
             .await?;
@@ -118,7 +118,6 @@ impl AuthRepository for PgAuthRepository {
     }
 
     async fn upsert_device(&self, device: &Device) -> anyhow::Result<Uuid> {
-
         let id = sqlx::query_scalar::<_, Uuid>(
             r#"INSERT INTO devices (id, user_id, device_name, platform, push_token, app_version, last_seen_at)
                VALUES ($1, $2, $3, $4::device_platform, $5, $6, COALESCE($7, now()))

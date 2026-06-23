@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
-use uuid::Uuid;
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum AppTheme {
@@ -42,7 +42,6 @@ pub struct UserSettings {
     pub contact_matching_opt_in: bool,
     pub updated_at: DateTime<Utc>,
 }
-
 
 impl UserSettings {
     pub fn new(user_id: Uuid) -> Self {

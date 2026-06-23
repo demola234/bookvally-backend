@@ -1,18 +1,18 @@
-use std::sync::Arc;
+use crate::adapters::PgAuthRepository;
 use auth_kit::JwtConfig;
 use cache::ConnectionManager;
 use messaging::KafkaProducer;
 use persistence::PgPool;
-use crate::adapters::PgAuthRepository;
+use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct AuthState {
-    pub repo:             PgAuthRepository,
-    pub jwt:              JwtConfig,
+    pub repo: PgAuthRepository,
+    pub jwt: JwtConfig,
     pub refresh_ttl_secs: i64,
-    pub access_ttl_secs:  u64,
-    pub redis:            ConnectionManager,
-    pub kafka:            Arc<KafkaProducer>,
+    pub access_ttl_secs: u64,
+    pub redis: ConnectionManager,
+    pub kafka: Arc<KafkaProducer>,
 }
 
 impl AuthState {
@@ -36,5 +36,7 @@ impl AuthState {
 }
 
 impl AsRef<JwtConfig> for AuthState {
-    fn as_ref(&self) -> &JwtConfig { &self.jwt }
+    fn as_ref(&self) -> &JwtConfig {
+        &self.jwt
+    }
 }

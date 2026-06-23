@@ -1,9 +1,9 @@
-use kernel::{AppError, UserId};
 use chrono::Utc;
+use kernel::{AppError, UserId};
 use uuid::Uuid;
 
 use crate::application::ports::AuthRepository;
-use crate::domain::{Device};
+use crate::domain::Device;
 
 pub struct RegisterDevice<R> {
     pub repository: R,
@@ -18,7 +18,6 @@ impl<R: AuthRepository> RegisterDevice<R> {
         push_token: Option<String>,
         app_version: Option<String>,
     ) -> Result<Uuid, AppError> {
-
         let device = Device {
             id: Uuid::new_v4(),
             user_id,
@@ -26,10 +25,14 @@ impl<R: AuthRepository> RegisterDevice<R> {
             device_name,
             push_token,
             app_version,
-            last_seen_at:  Some(Utc::now())
+            last_seen_at: Some(Utc::now()),
         };
 
-        let id = self.repository.upsert_device(&device).await.map_err(AppError::internal)?;
+        let id = self
+            .repository
+            .upsert_device(&device)
+            .await
+            .map_err(AppError::internal)?;
         Ok(id)
     }
 }

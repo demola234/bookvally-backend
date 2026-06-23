@@ -1,5 +1,10 @@
-use axum::{Json, Router, extract::{Path, State}, http::StatusCode, routing::{get, post}};
 use auth_kit::JwtAuthExtractor;
+use axum::{
+    extract::{Path, State},
+    http::StatusCode,
+    routing::{get, post},
+    Json, Router,
+};
 use cache::cache::{del, get_json, set_json};
 use http_kit::{v1, HttpError};
 use kernel::AppError;
@@ -15,19 +20,22 @@ use crate::http::dto::*;
 use crate::wiring::CatalogState;
 
 const BOOKS_LIST_TTL: usize = 300;
-const BOOK_TTL:       usize = 600;
+const BOOK_TTL: usize = 600;
 
-fn books_list_key(user_id: Uuid) -> String { format!("catalog:books:{user_id}") }
-fn book_key(id: Uuid) -> String            { format!("catalog:book:{id}") }
+fn books_list_key(user_id: Uuid) -> String {
+    format!("catalog:books:{user_id}")
+}
+fn book_key(id: Uuid) -> String {
+    format!("catalog:book:{id}")
+}
 
 pub fn routes() -> Router<CatalogState> {
     v1(Router::new()
-        .route("/catalog/books/import",     post(import_book))
-        .route("/catalog/books",            get(list_books))
-        .route("/catalog/books/{id}",       get(get_book).delete(delete_book))
+        .route("/catalog/books/import", post(import_book))
+        .route("/catalog/books", get(list_books))
+        .route("/catalog/books/{id}", get(get_book).delete(delete_book))
         .route("/catalog/books/{id}/cover", get(get_book_cover))
-        .route("/catalog/books/{id}/parse", post(parse_book))
-    )
+        .route("/catalog/books/{id}/parse", post(parse_book)))
 }
 
 #[utoipa::path(post, path = "/v1/catalog/books/import", tag = "catalog",
@@ -48,23 +56,29 @@ pub async fn import_book(
 
     let file_id = ImportFromCloud {
         repository: state.repo,
-        importer:   state.importer,
+        importer: state.importer,
     }
-    .execute(user_id, ImportFromCloudInput {
-        source_url:     body.source_url,
-        file_name:      body.file_name,
-        cloud_provider: body.cloud_provider,
-    })
+    .execute(
+        user_id,
+        ImportFromCloudInput {
+            source_url: body.source_url,
+            file_name: body.file_name,
+            cloud_provider: body.cloud_provider,
+        },
+    )
     .await
     .map_err(HttpError::from)?;
 
     del(&mut state.redis, &books_list_key(user_id)).await.ok();
 
-    Ok((StatusCode::ACCEPTED, Json(ImportBookResponse {
-        file_id,
-        status:  "pending".into(),
-        message: "import queued — call /parse when ready".into(),
-    })))
+    Ok((
+        StatusCode::ACCEPTED,
+        Json(ImportBookResponse {
+            file_id,
+            status: "pending".into(),
+            message: "import queued — call /parse when ready".into(),
+        }),
+    ))
 }
 
 #[utoipa::path(get, path = "/v1/catalog/books", tag = "catalog",
@@ -82,14 +96,17 @@ pub async fn list_books(
         return Ok(Json(cached));
     }
 
-    let books = state.repo
+    let books = state
+        .repo
         .list_books(user_id)
         .await
         .map_err(AppError::internal)
         .map_err(HttpError::from)?;
 
     let response: Vec<BookResponse> = books.into_iter().map(BookResponse::from).collect();
-    set_json(&mut state.redis, &key, &response, BOOKS_LIST_TTL).await.ok();
+    set_json(&mut state.redis, &key, &response, BOOKS_LIST_TTL)
+        .await
+        .ok();
 
     Ok(Json(response))
 }
@@ -110,13 +127,17 @@ pub async fn get_book(
         return Ok(Json(cached));
     }
 
-    let book = GetBook { repository: state.repo }
-        .execute(&id)
-        .await
-        .map_err(HttpError::from)?;
+    let book = GetBook {
+        repository: state.repo,
+    }
+    .execute(&id)
+    .await
+    .map_err(HttpError::from)?;
 
     let response = BookResponse::from(book);
-    set_json(&mut state.redis, &key, &response, BOOK_TTL).await.ok();
+    set_json(&mut state.redis, &key, &response, BOOK_TTL)
+        .await
+        .ok();
 
     Ok(Json(response))
 }
@@ -133,7 +154,8 @@ pub async fn delete_book(
 ) -> Result<StatusCode, HttpError> {
     let user_id = *user.id().as_uuid();
 
-    state.repo
+    state
+        .repo
         .delete_book(&id)
         .await
         .map_err(AppError::internal)
@@ -161,13 +183,17 @@ pub async fn get_book_cover(
         return Ok(Json(serde_json::json!({ "cover_url": cached.cover_url })));
     }
 
-    let book = GetBook { repository: state.repo }
-        .execute(&id)
-        .await
-        .map_err(HttpError::from)?;
+    let book = GetBook {
+        repository: state.repo,
+    }
+    .execute(&id)
+    .await
+    .map_err(HttpError::from)?;
 
     let response = BookResponse::from(book);
-    set_json(&mut state.redis, &key, &response, BOOK_TTL).await.ok();
+    set_json(&mut state.redis, &key, &response, BOOK_TTL)
+        .await
+        .ok();
 
     Ok(Json(serde_json::json!({ "cover_url": response.cover_url })))
 }
@@ -186,7 +212,7 @@ pub async fn parse_book(
 
     ParseFile {
         repository: state.repo,
-        parser:     state.parser,
+        parser: state.parser,
     }
     .execute(id, user_id)
     .await

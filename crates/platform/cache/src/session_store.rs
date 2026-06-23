@@ -1,6 +1,5 @@
-use redis::aio::ConnectionManager;
 use kernel::UserId;
-
+use redis::aio::ConnectionManager;
 
 pub struct SessionStore {
     pub client: ConnectionManager,
@@ -11,7 +10,12 @@ impl SessionStore {
         Self { client: conn }
     }
 
-    pub async fn store(&self, token: &str, user_id: UserId, ttl: usize) -> Result<(), redis::RedisError> {
+    pub async fn store(
+        &self,
+        token: &str,
+        user_id: UserId,
+        ttl: usize,
+    ) -> Result<(), redis::RedisError> {
         let mut conn = self.client.clone();
         redis::cmd("SET")
             .arg(format!("session:{}", token))

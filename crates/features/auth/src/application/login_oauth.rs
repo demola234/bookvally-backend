@@ -1,20 +1,20 @@
-use std::sync::Arc;
-use kernel::{AppError, EventEnvelope};
-use auth_kit::{JwtConfig, encode_access, encode_refresh};
-use messaging::{KafkaProducer, AUTH_EVENTS};
-use sha2::{Sha256, Digest};
+use auth_kit::{encode_access, encode_refresh, JwtConfig};
 use chrono::Utc;
+use kernel::{AppError, EventEnvelope};
+use messaging::{KafkaProducer, AUTH_EVENTS};
+use sha2::{Digest, Sha256};
+use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::application::ports::AuthRepository;
 use crate::domain::{Session, TokenPair};
-use crate::events::{USER_LOGGED_IN, USER_REGISTERED, UserLoggedIn, UserRegistered};
+use crate::events::{UserLoggedIn, UserRegistered, USER_LOGGED_IN, USER_REGISTERED};
 
 pub struct LoginOAuth<R> {
-    pub repository:       R,
-    pub jwt:              JwtConfig,
+    pub repository: R,
+    pub jwt: JwtConfig,
     pub refresh_ttl_secs: i64,
-    pub kafka:            Arc<KafkaProducer>,
+    pub kafka: Arc<KafkaProducer>,
 }
 
 impl<R: AuthRepository> LoginOAuth<R> {
@@ -27,7 +27,8 @@ impl<R: AuthRepository> LoginOAuth<R> {
         ip: Option<String>,
         user_agent: Option<String>,
     ) -> Result<TokenPair, AppError> {
-        let (user_id, handle, is_new) = match self.repository
+        let (user_id, handle, is_new) = match self
+            .repository
             .find_user_by_oauth(&provider, &provider_account_id)
             .await
             .map_err(AppError::internal)?
@@ -35,7 +36,8 @@ impl<R: AuthRepository> LoginOAuth<R> {
             Some((id, handle)) => (id, handle, false),
             None => {
                 let handle = slugify_handle(&display_name);
-                let id = self.repository
+                let id = self
+                    .repository
                     .upsert_oauth_user(&provider, &provider_account_id, email.as_deref(), &handle)
                     .await
                     .map_err(AppError::internal)?;
@@ -43,10 +45,12 @@ impl<R: AuthRepository> LoginOAuth<R> {
             }
         };
 
-        let access_token  = encode_access(&self.jwt, user_id, handle.clone()).map_err(AppError::internal)?;
-        let refresh_token = encode_refresh(&self.jwt, user_id, handle.clone()).map_err(AppError::internal)?;
+        let access_token =
+            encode_access(&self.jwt, user_id, handle.clone()).map_err(AppError::internal)?;
+        let refresh_token =
+            encode_refresh(&self.jwt, user_id, handle.clone()).map_err(AppError::internal)?;
 
-        let hash       = hex::encode(Sha256::digest(refresh_token.as_bytes()));
+        let hash = hex::encode(Sha256::digest(refresh_token.as_bytes()));
         let expires_at = Utc::now() + chrono::Duration::seconds(self.refresh_ttl_secs);
 
         let session = Session {
@@ -61,25 +65,50 @@ impl<R: AuthRepository> LoginOAuth<R> {
             revoked_at: None,
         };
 
-        self.repository.create_session(&session).await.map_err(AppError::internal)?;
+        self.repository
+            .create_session(&session)
+            .await
+            .map_err(AppError::internal)?;
 
         let user_uuid = *user_id.as_uuid();
         if is_new {
-            let envelope = EventEnvelope::new(USER_REGISTERED, UserRegistered { user_id: user_uuid, handle });
-            let _ = self.kafka.publish(AUTH_EVENTS, &user_uuid.to_string(), &envelope).await;
+            let envelope = EventEnvelope::new(
+                USER_REGISTERED,
+                UserRegistered {
+                    user_id: user_uuid,
+                    handle,
+                },
+            );
+            let _ = self
+                .kafka
+                .publish(AUTH_EVENTS, &user_uuid.to_string(), &envelope)
+                .await;
         } else {
             let envelope = EventEnvelope::new(USER_LOGGED_IN, UserLoggedIn { user_id: user_uuid });
-            let _ = self.kafka.publish(AUTH_EVENTS, &user_uuid.to_string(), &envelope).await;
+            let _ = self
+                .kafka
+                .publish(AUTH_EVENTS, &user_uuid.to_string(), &envelope)
+                .await;
         }
 
-        Ok(TokenPair { access_token, refresh_token, expires_in: self.refresh_ttl_secs })
+        Ok(TokenPair {
+            access_token,
+            refresh_token,
+            expires_in: self.refresh_ttl_secs,
+        })
     }
 }
 
 fn slugify_handle(display_name: &str) -> String {
     let base: String = display_name
         .chars()
-        .map(|c| if c.is_alphanumeric() { c.to_ascii_lowercase() } else { '_' })
+        .map(|c| {
+            if c.is_alphanumeric() {
+                c.to_ascii_lowercase()
+            } else {
+                '_'
+            }
+        })
         .collect();
     let suffix = &Uuid::new_v4().to_string()[..6];
     let base = base.trim_matches('_');

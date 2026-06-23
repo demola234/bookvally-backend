@@ -1,9 +1,9 @@
+use kernel::EventEnvelope;
 use rdkafka::consumer::{Consumer, StreamConsumer};
+use rdkafka::message::OwnedMessage;
 use rdkafka::ClientConfig;
 use rdkafka::Message;
-use rdkafka::message::OwnedMessage;
-use serde::{Serialize, de::DeserializeOwned};
-use kernel::EventEnvelope;
+use serde::{de::DeserializeOwned, Serialize};
 
 use super::codec;
 
@@ -28,8 +28,12 @@ impl KafkaConsumer {
         Ok(msg.detach())
     }
 
-    pub fn decode<T: Serialize + DeserializeOwned>(msg: &OwnedMessage) -> anyhow::Result<EventEnvelope<T>> {
-        let bytes = msg.payload().ok_or_else(|| anyhow::anyhow!("empty payload"))?;
+    pub fn decode<T: Serialize + DeserializeOwned>(
+        msg: &OwnedMessage,
+    ) -> anyhow::Result<EventEnvelope<T>> {
+        let bytes = msg
+            .payload()
+            .ok_or_else(|| anyhow::anyhow!("empty payload"))?;
         codec::decode(bytes)
     }
 }

@@ -19,7 +19,11 @@ impl RateLimiter {
         let mut conn = self.client.clone();
         let count: usize = cmd("INCR").arg(key).query_async(&mut conn).await?;
         if count == 1 {
-            cmd("EXPIRE").arg(key).arg(expire).query_async::<()>(&mut conn).await?;
+            cmd("EXPIRE")
+                .arg(key)
+                .arg(expire)
+                .query_async::<()>(&mut conn)
+                .await?;
         }
         Ok(count <= limit)
     }
@@ -29,5 +33,4 @@ impl RateLimiter {
         cmd("DEL").arg(key).query_async::<()>(&mut conn).await?;
         Ok(())
     }
-
 }

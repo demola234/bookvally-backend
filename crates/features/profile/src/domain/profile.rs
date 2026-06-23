@@ -1,7 +1,7 @@
-use chrono::{DateTime, Utc};
-use uuid::Uuid;
 use chrono::NaiveDate;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 #[derive(Debug, Clone)]
 pub struct Profile {
@@ -24,7 +24,6 @@ pub enum ProfileVisibility {
     Public,
     Private,
 }
-
 
 impl Profile {
     pub fn new(user_id: Uuid) -> Self {
