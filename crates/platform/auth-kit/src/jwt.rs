@@ -1,7 +1,7 @@
-use chrono::{Utc};
-use serde::{Deserialize, Serialize};
+use chrono::Utc;
 use jsonwebtoken::{self};
 use kernel::UserId;
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone)]
 pub struct JwtConfig {
@@ -10,8 +10,7 @@ pub struct JwtConfig {
     pub refresh_ttl_secs: i64,
 }
 
-#[derive(
-Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
     pub sub: String,
     pub exp: i64,
@@ -19,8 +18,6 @@ pub struct Claims {
     pub iat: i64,
     pub token_type: String,
 }
-
-
 
 impl JwtConfig {
     pub fn new(secret: String, access_ttl_secs: i64, refresh_ttl_secs: i64) -> Self {
@@ -44,8 +41,11 @@ impl JwtConfig {
     }
 }
 
-
-pub fn encode_access(config: &JwtConfig, user_id: UserId, handle: String) -> anyhow::Result<String> {
+pub fn encode_access(
+    config: &JwtConfig,
+    user_id: UserId,
+    handle: String,
+) -> anyhow::Result<String> {
     let now = Utc::now();
     let exp = now + chrono::Duration::seconds(config.get_access_ttl_secs());
     let claims = Claims {
@@ -56,12 +56,20 @@ pub fn encode_access(config: &JwtConfig, user_id: UserId, handle: String) -> any
         token_type: "access".to_string(),
     };
 
-    let token = jsonwebtoken::encode(&jsonwebtoken::Header::default(), &claims, &jsonwebtoken::EncodingKey::from_secret(config.get_secret().as_bytes()))?;
+    let token = jsonwebtoken::encode(
+        &jsonwebtoken::Header::default(),
+        &claims,
+        &jsonwebtoken::EncodingKey::from_secret(config.get_secret().as_bytes()),
+    )?;
 
     Ok(token)
 }
 
-pub fn encode_refresh(config: &JwtConfig, user_id: UserId, handle: String) -> anyhow::Result<String> {
+pub fn encode_refresh(
+    config: &JwtConfig,
+    user_id: UserId,
+    handle: String,
+) -> anyhow::Result<String> {
     let now = Utc::now();
     let exp = now + chrono::Duration::seconds(config.get_refresh_ttl_secs());
     let claims = Claims {
@@ -72,11 +80,19 @@ pub fn encode_refresh(config: &JwtConfig, user_id: UserId, handle: String) -> an
         token_type: "refresh".to_string(),
     };
 
-    let token = jsonwebtoken::encode(&jsonwebtoken::Header::default(), &claims, &jsonwebtoken::EncodingKey::from_secret(config.get_secret().as_bytes()))?;
+    let token = jsonwebtoken::encode(
+        &jsonwebtoken::Header::default(),
+        &claims,
+        &jsonwebtoken::EncodingKey::from_secret(config.get_secret().as_bytes()),
+    )?;
     Ok(token)
 }
 
 pub fn decode_access(config: &JwtConfig, token: &str) -> anyhow::Result<Claims> {
-    let token_data = jsonwebtoken::decode::<Claims>(token, &jsonwebtoken::DecodingKey::from_secret(config.get_secret().as_bytes()), &jsonwebtoken::Validation::default())?;
+    let token_data = jsonwebtoken::decode::<Claims>(
+        token,
+        &jsonwebtoken::DecodingKey::from_secret(config.get_secret().as_bytes()),
+        &jsonwebtoken::Validation::default(),
+    )?;
     Ok(token_data.claims)
 }

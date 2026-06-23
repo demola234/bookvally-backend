@@ -1,5 +1,10 @@
-use axum::{Json, Router, extract::{Path, State}, http::StatusCode, routing::{get, patch}};
 use auth_kit::JwtAuthExtractor;
+use axum::{
+    extract::{Path, State},
+    http::StatusCode,
+    routing::{get, patch},
+    Json, Router,
+};
 use chrono::NaiveTime;
 use http_kit::{v1, HttpError};
 use kernel::AppError;
@@ -8,7 +13,10 @@ use uuid::Uuid;
 use crate::application::{
     get_profile::{GetProfile, GetPublicProfile},
     ports::ProfileRepository,
-    set_reminder::{CreateReminder, CreateReminderInput, DeleteReminder, ListReminders, UpdateReminder, UpdateReminderInput},
+    set_reminder::{
+        CreateReminder, CreateReminderInput, DeleteReminder, ListReminders, UpdateReminder,
+        UpdateReminderInput,
+    },
     update_profile::{UpdateProfile, UpdateProfileInput},
     update_settings::{UpdateSettings, UpdateSettingsInput},
 };
@@ -17,12 +25,20 @@ use crate::wiring::ProfileState;
 
 pub fn routes() -> Router<ProfileState> {
     v1(Router::new()
-        .route("/profile",               get(get_profile).patch(update_profile))
-        .route("/profile/{handle}",       get(get_public_profile))
-        .route("/profile/settings",      get(get_settings).patch(update_settings))
-        .route("/profile/reminders",     get(list_reminders).post(create_reminder))
-        .route("/profile/reminders/{id}", patch(update_reminder).delete(delete_reminder))
-    )
+        .route("/profile", get(get_profile).patch(update_profile))
+        .route("/profile/{handle}", get(get_public_profile))
+        .route(
+            "/profile/settings",
+            get(get_settings).patch(update_settings),
+        )
+        .route(
+            "/profile/reminders",
+            get(list_reminders).post(create_reminder),
+        )
+        .route(
+            "/profile/reminders/{id}",
+            patch(update_reminder).delete(delete_reminder),
+        ))
 }
 
 #[utoipa::path(get, path = "/v1/profile", tag = "profile",
@@ -33,10 +49,12 @@ pub async fn get_profile(
     State(state): State<ProfileState>,
     JwtAuthExtractor(user): JwtAuthExtractor,
 ) -> Result<Json<ProfileResponse>, HttpError> {
-    let profile = GetProfile { repository: state.repo }
-        .execute(*user.id().as_uuid())
-        .await
-        .map_err(HttpError::from)?;
+    let profile = GetProfile {
+        repository: state.repo,
+    }
+    .execute(*user.id().as_uuid())
+    .await
+    .map_err(HttpError::from)?;
     Ok(Json(ProfileResponse::from(profile)))
 }
 
@@ -50,18 +68,23 @@ pub async fn update_profile(
     JwtAuthExtractor(user): JwtAuthExtractor,
     Json(body): Json<UpdateProfileRequest>,
 ) -> Result<Json<ProfileResponse>, HttpError> {
-    let profile = UpdateProfile { repository: state.repo }
-        .execute(*user.id().as_uuid(), UpdateProfileInput {
-            bio:             body.bio,
-            pronouns:        body.pronouns,
-            location:        body.location,
-            banner_url:      body.banner_url,
-            visibility:      body.visibility,
+    let profile = UpdateProfile {
+        repository: state.repo,
+    }
+    .execute(
+        *user.id().as_uuid(),
+        UpdateProfileInput {
+            bio: body.bio,
+            pronouns: body.pronouns,
+            location: body.location,
+            banner_url: body.banner_url,
+            visibility: body.visibility,
             favorite_genres: body.favorite_genres,
-            reading_since:   body.reading_since,
-        })
-        .await
-        .map_err(HttpError::from)?;
+            reading_since: body.reading_since,
+        },
+    )
+    .await
+    .map_err(HttpError::from)?;
     Ok(Json(ProfileResponse::from(profile)))
 }
 
@@ -73,10 +96,12 @@ pub async fn get_public_profile(
     State(state): State<ProfileState>,
     Path(handle): Path<String>,
 ) -> Result<Json<ProfileResponse>, HttpError> {
-    let profile = GetPublicProfile { repository: state.repo }
-        .execute(handle)
-        .await
-        .map_err(HttpError::from)?;
+    let profile = GetPublicProfile {
+        repository: state.repo,
+    }
+    .execute(handle)
+    .await
+    .map_err(HttpError::from)?;
     Ok(Json(ProfileResponse::from(profile)))
 }
 
@@ -88,7 +113,8 @@ pub async fn get_settings(
     State(state): State<ProfileState>,
     JwtAuthExtractor(user): JwtAuthExtractor,
 ) -> Result<Json<SettingsResponse>, HttpError> {
-    let s = state.repo
+    let s = state
+        .repo
         .find_settings(*user.id().as_uuid())
         .await
         .map_err(AppError::internal)
@@ -107,21 +133,26 @@ pub async fn update_settings(
     JwtAuthExtractor(user): JwtAuthExtractor,
     Json(body): Json<UpdateSettingsRequest>,
 ) -> Result<Json<SettingsResponse>, HttpError> {
-    let s = UpdateSettings { repository: state.repo }
-        .execute(*user.id().as_uuid(), UpdateSettingsInput {
-            app_theme:               body.app_theme,
-            reader_theme:            body.reader_theme,
-            reader_font_family:      body.reader_font_family,
-            reader_font_size:        body.reader_font_size,
-            default_speed:           body.default_speed,
-            default_pitch:           body.default_pitch,
-            sleep_timer_minutes:     body.sleep_timer_minutes,
-            daily_goal_minutes:      body.daily_goal_minutes,
-            activity_sharing:        body.activity_sharing,
+    let s = UpdateSettings {
+        repository: state.repo,
+    }
+    .execute(
+        *user.id().as_uuid(),
+        UpdateSettingsInput {
+            app_theme: body.app_theme,
+            reader_theme: body.reader_theme,
+            reader_font_family: body.reader_font_family,
+            reader_font_size: body.reader_font_size,
+            default_speed: body.default_speed,
+            default_pitch: body.default_pitch,
+            sleep_timer_minutes: body.sleep_timer_minutes,
+            daily_goal_minutes: body.daily_goal_minutes,
+            activity_sharing: body.activity_sharing,
             contact_matching_opt_in: body.contact_matching_opt_in,
-        })
-        .await
-        .map_err(HttpError::from)?;
+        },
+    )
+    .await
+    .map_err(HttpError::from)?;
     Ok(Json(SettingsResponse::from(s)))
 }
 
@@ -133,11 +164,15 @@ pub async fn list_reminders(
     State(state): State<ProfileState>,
     JwtAuthExtractor(user): JwtAuthExtractor,
 ) -> Result<Json<Vec<ReminderResponse>>, HttpError> {
-    let reminders = ListReminders { repository: state.repo }
-        .execute(*user.id().as_uuid())
-        .await
-        .map_err(HttpError::from)?;
-    Ok(Json(reminders.into_iter().map(ReminderResponse::from).collect()))
+    let reminders = ListReminders {
+        repository: state.repo,
+    }
+    .execute(*user.id().as_uuid())
+    .await
+    .map_err(HttpError::from)?;
+    Ok(Json(
+        reminders.into_iter().map(ReminderResponse::from).collect(),
+    ))
 }
 
 #[utoipa::path(post, path = "/v1/profile/reminders", tag = "profile",
@@ -150,17 +185,25 @@ pub async fn create_reminder(
     JwtAuthExtractor(user): JwtAuthExtractor,
     Json(body): Json<CreateReminderRequest>,
 ) -> Result<StatusCode, HttpError> {
-    let time = NaiveTime::parse_from_str(&body.time_local, "%H:%M")
-        .map_err(|_| HttpError::from(AppError::UnprocessableEntity("invalid time format, use HH:MM".into())))?;
+    let time = NaiveTime::parse_from_str(&body.time_local, "%H:%M").map_err(|_| {
+        HttpError::from(AppError::UnprocessableEntity(
+            "invalid time format, use HH:MM".into(),
+        ))
+    })?;
 
-    CreateReminder { repository: state.repo }
-        .execute(*user.id().as_uuid(), CreateReminderInput {
-            time_local:    time,
-            days_of_week:  body.days_of_week,
+    CreateReminder {
+        repository: state.repo,
+    }
+    .execute(
+        *user.id().as_uuid(),
+        CreateReminderInput {
+            time_local: time,
+            days_of_week: body.days_of_week,
             reminder_type: body.reminder_type.unwrap_or_else(|| "reading".into()),
-        })
-        .await
-        .map_err(HttpError::from)?;
+        },
+    )
+    .await
+    .map_err(HttpError::from)?;
 
     Ok(StatusCode::CREATED)
 }
@@ -177,20 +220,30 @@ pub async fn update_reminder(
     Path(id): Path<Uuid>,
     Json(body): Json<UpdateReminderRequest>,
 ) -> Result<StatusCode, HttpError> {
-    let time = body.time_local.as_deref()
-        .map(|t| NaiveTime::parse_from_str(t, "%H:%M")
-            .map_err(|_| HttpError::from(AppError::UnprocessableEntity("invalid time format".into()))))
+    let time = body
+        .time_local
+        .as_deref()
+        .map(|t| {
+            NaiveTime::parse_from_str(t, "%H:%M").map_err(|_| {
+                HttpError::from(AppError::UnprocessableEntity("invalid time format".into()))
+            })
+        })
         .transpose()?;
 
-    UpdateReminder { repository: state.repo }
-        .execute(*user.id().as_uuid(), UpdateReminderInput {
-            reminder_id:  id,
-            time_local:   time,
+    UpdateReminder {
+        repository: state.repo,
+    }
+    .execute(
+        *user.id().as_uuid(),
+        UpdateReminderInput {
+            reminder_id: id,
+            time_local: time,
             days_of_week: body.days_of_week,
-            enabled:      body.enabled,
-        })
-        .await
-        .map_err(HttpError::from)?;
+            enabled: body.enabled,
+        },
+    )
+    .await
+    .map_err(HttpError::from)?;
 
     Ok(StatusCode::NO_CONTENT)
 }
@@ -205,9 +258,11 @@ pub async fn delete_reminder(
     JwtAuthExtractor(user): JwtAuthExtractor,
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, HttpError> {
-    DeleteReminder { repository: state.repo }
-        .execute(*user.id().as_uuid(), id)
-        .await
-        .map_err(HttpError::from)?;
+    DeleteReminder {
+        repository: state.repo,
+    }
+    .execute(*user.id().as_uuid(), id)
+    .await
+    .map_err(HttpError::from)?;
     Ok(StatusCode::NO_CONTENT)
 }

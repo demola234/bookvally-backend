@@ -1,6 +1,6 @@
+use kernel::UserId;
 use redis::aio::ConnectionManager;
 use redis::cmd;
-use kernel::UserId;
 
 pub struct Presence {
     pub client: ConnectionManager,
@@ -11,7 +11,11 @@ impl Presence {
         Self { client: conn }
     }
 
-    pub async fn mark_online(conn: &mut ConnectionManager, user_id: UserId, ttl_secs: usize) -> anyhow::Result<()> {
+    pub async fn mark_online(
+        conn: &mut ConnectionManager,
+        user_id: UserId,
+        ttl_secs: usize,
+    ) -> anyhow::Result<()> {
         cmd("SET")
             .arg(format!("presence:{}", user_id))
             .arg("online")
@@ -22,7 +26,10 @@ impl Presence {
         Ok(())
     }
 
-    pub async fn mark_offline(conn: &mut ConnectionManager, user_id: UserId) -> anyhow::Result<bool> {
+    pub async fn mark_offline(
+        conn: &mut ConnectionManager,
+        user_id: UserId,
+    ) -> anyhow::Result<bool> {
         let deleted_count: i64 = cmd("DEL")
             .arg(format!("presence:{}", user_id))
             .query_async(conn)

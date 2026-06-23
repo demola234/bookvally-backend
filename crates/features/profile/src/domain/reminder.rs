@@ -3,36 +3,36 @@ use uuid::Uuid;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DaysOfWeek {
-    pub monday:    bool,
-    pub tuesday:   bool,
+    pub monday: bool,
+    pub tuesday: bool,
     pub wednesday: bool,
-    pub thursday:  bool,
-    pub friday:    bool,
-    pub saturday:  bool,
-    pub sunday:    bool,
+    pub thursday: bool,
+    pub friday: bool,
+    pub saturday: bool,
+    pub sunday: bool,
 }
 
 impl DaysOfWeek {
     pub fn from_bits(bits: i16) -> Self {
         Self {
-            monday:    bits & 1  != 0,
-            tuesday:   bits & 2  != 0,
-            wednesday: bits & 4  != 0,
-            thursday:  bits & 8  != 0,
-            friday:    bits & 16 != 0,
-            saturday:  bits & 32 != 0,
-            sunday:    bits & 64 != 0,
+            monday: bits & 1 != 0,
+            tuesday: bits & 2 != 0,
+            wednesday: bits & 4 != 0,
+            thursday: bits & 8 != 0,
+            friday: bits & 16 != 0,
+            saturday: bits & 32 != 0,
+            sunday: bits & 64 != 0,
         }
     }
 
     pub fn to_bits(&self) -> i16 {
-          (self.monday    as i16)
-        | (self.tuesday   as i16) << 1
-        | (self.wednesday as i16) << 2
-        | (self.thursday  as i16) << 3
-        | (self.friday    as i16) << 4
-        | (self.saturday  as i16) << 5
-        | (self.sunday    as i16) << 6
+        (self.monday as i16)
+            | (self.tuesday as i16) << 1
+            | (self.wednesday as i16) << 2
+            | (self.thursday as i16) << 3
+            | (self.friday as i16) << 4
+            | (self.saturday as i16) << 5
+            | (self.sunday as i16) << 6
     }
 }
 #[derive(Clone, Debug)]

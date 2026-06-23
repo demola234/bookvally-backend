@@ -1,18 +1,21 @@
-use uuid::Uuid;
-use serde::{Serialize, Deserialize};
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(bound(serialize = "T: serde::Serialize", deserialize = "T: serde::de::DeserializeOwned"))]
+#[serde(bound(
+    serialize = "T: serde::Serialize",
+    deserialize = "T: serde::de::DeserializeOwned"
+))]
 
 pub struct EventEnvelope<T> {
     pub id: Uuid,
-    pub event_type:  String,
+    pub event_type: String,
     pub occurred_at: DateTime<Utc>,
     pub payload: T,
 }
 
-impl <T> EventEnvelope<T> {
+impl<T> EventEnvelope<T> {
     pub fn new(event_type: &'static str, payload: T) -> Self {
         Self::at(Utc::now(), event_type, payload)
     }
@@ -38,4 +41,3 @@ impl <T> EventEnvelope<T> {
         &mut self.payload
     }
 }
-

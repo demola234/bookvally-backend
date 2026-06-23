@@ -13,8 +13,5 @@ impl MakeRequestId for UuidRequestId {
 }
 
 pub fn request_id_layer() -> SetRequestIdLayer<UuidRequestId> {
-    SetRequestIdLayer::new(
-        HeaderName::from_static("x-request-id"),
-        UuidRequestId,
-    )
+    SetRequestIdLayer::new(HeaderName::from_static("x-request-id"), UuidRequestId)
 }

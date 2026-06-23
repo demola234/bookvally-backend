@@ -1,13 +1,14 @@
+use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use uuid::Uuid;
-use serde::{Deserialize, Serialize};
 
 #[derive(Hash, Debug, Clone, PartialEq, Eq, Copy, Deserialize, Serialize)]
 pub struct UserId(Uuid);
 
 impl UserId {
-    pub fn new() ->
-        Self { Self(Uuid::new_v4()) }
+    pub fn new() -> Self {
+        Self(Uuid::new_v4())
+    }
 
     pub fn as_uuid(&self) -> &Uuid {
         &self.0

@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc, NaiveDate, NaiveDateTime};
+use chrono::{DateTime, NaiveDate, NaiveDateTime, Utc};
 
 pub trait Clock: Send + Sync + 'static {
     fn now(&self) -> DateTime<Utc>;
@@ -22,7 +22,8 @@ impl Clock for SystemClock {
     }
 
     fn today_for_user(&self, iana_tz: &str) -> NaiveDate {
-        iana_tz.parse::<chrono_tz::Tz>()
+        iana_tz
+            .parse::<chrono_tz::Tz>()
             .map(|tz| Utc::now().with_timezone(&tz).date_naive())
             .unwrap_or_else(|_| Utc::now().date_naive())
     }

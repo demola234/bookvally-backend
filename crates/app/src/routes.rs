@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use axum::Router;
-use utoipa::OpenApi;
 use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
+use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
 use crate::container::Container;
@@ -48,10 +48,8 @@ pub fn all_routes(container: Arc<Container>) -> axum::Router {
         container.kafka.clone(),
     );
 
-    let profile_state = feat_profile::wiring::ProfileState::new(
-        container.db.clone(),
-        container.jwt.clone(),
-    );
+    let profile_state =
+        feat_profile::wiring::ProfileState::new(container.db.clone(), container.jwt.clone());
 
     let catalog_state = container.storage.as_ref().map(|s| {
         feat_catalog::wiring::CatalogState::new(
@@ -94,7 +92,6 @@ pub fn all_routes(container: Arc<Container>) -> axum::Router {
             }
             r
         })
-
         .layer(trace_layer())
         .layer(request_id_layer())
         .with_state(container)

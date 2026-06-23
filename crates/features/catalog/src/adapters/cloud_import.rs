@@ -1,21 +1,23 @@
+use crate::adapters::consts::{
+    DROP_BOX_API_URL, DROP_BOX_CDN_API_URL, DROP_BOX_CONST, GOOGLE_DRIVE_CONST,
+    GOOGLE_DRIVE_UPLOAD_API_URL, USER_AGENT,
+};
 use std::sync::Arc;
-use uuid::Uuid;
 use storage::StorageService;
-use crate::adapters::consts::{USER_AGENT, DROP_BOX_CONST, DROP_BOX_API_URL, DROP_BOX_CDN_API_URL, GOOGLE_DRIVE_CONST, GOOGLE_DRIVE_UPLOAD_API_URL};
+use uuid::Uuid;
 
 pub struct CloudImporter {
     pub storage: Arc<dyn StorageService>,
-    pub http:    reqwest::Client,
+    pub http: reqwest::Client,
 }
 
 pub struct ImportedFile {
     pub storage_key: String,
-    pub cdn_url:     String,
-    pub size_bytes:  i64,
+    pub cdn_url: String,
+    pub size_bytes: i64,
 }
 
 impl CloudImporter {
-
     pub fn new(storage: Arc<dyn StorageService>) -> Self {
         Self {
             storage,
@@ -34,11 +36,7 @@ impl CloudImporter {
     ) -> anyhow::Result<ImportedFile> {
         let url = normalize_url(source_url);
 
-        let resp = self.http
-            .get(&url)
-            .send()
-            .await?
-            .error_for_status()?;
+        let resp = self.http.get(&url).send().await?.error_for_status()?;
 
         let content_type = resp
             .headers()
@@ -53,20 +51,26 @@ impl CloudImporter {
         let ext = file_extension(&content_type, file_name);
         let key = format!("books/{user_id}/{}/{file_name}.{ext}", Uuid::new_v4());
 
-        let cdn_url = self.storage
+        let cdn_url = self
+            .storage
             .upload(&key, bytes.to_vec(), &content_type)
             .await
             .map_err(|e| anyhow::anyhow!("storage upload failed: {e}"))?;
 
-        Ok(ImportedFile { storage_key: key, cdn_url, size_bytes })
+        Ok(ImportedFile {
+            storage_key: key,
+            cdn_url,
+            size_bytes,
+        })
     }
 }
 
 fn normalize_url(url: &str) -> String {
     if url.contains(&DROP_BOX_CONST.to_string()) {
-        return url
-            .replace("dl=0", "dl=1")
-            .replace(&DROP_BOX_API_URL.to_string(), &DROP_BOX_CDN_API_URL.to_string());
+        return url.replace("dl=0", "dl=1").replace(
+            &DROP_BOX_API_URL.to_string(),
+            &DROP_BOX_CDN_API_URL.to_string(),
+        );
     }
     // Google Drive
     if url.contains(&GOOGLE_DRIVE_CONST.to_string()) {
@@ -93,12 +97,16 @@ fn extract_drive_id(url: &str) -> Option<&str> {
 
 fn file_extension<'a>(content_type: &'a str, file_name: &'a str) -> &'a str {
     // prefer extension from file name
-    if file_name.ends_with(".epub") { return "epub"; }
-    if file_name.ends_with(".pdf")  { return "pdf"; }
+    if file_name.ends_with(".epub") {
+        return "epub";
+    }
+    if file_name.ends_with(".pdf") {
+        return "pdf";
+    }
     // fall back to content type
     match content_type {
         ct if ct.contains("epub") => "epub",
-        ct if ct.contains("pdf")  => "pdf",
-        _                         => "bin",
+        ct if ct.contains("pdf") => "pdf",
+        _ => "bin",
     }
 }

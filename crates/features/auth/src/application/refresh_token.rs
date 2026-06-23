@@ -1,7 +1,7 @@
-use kernel::{AppError};
-use auth_kit::{JwtConfig, encode_access, encode_refresh};
-use sha2::{Sha256, Digest};
+use auth_kit::{encode_access, encode_refresh, JwtConfig};
 use chrono::Utc;
+use kernel::AppError;
+use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
 use crate::application::ports::AuthRepository;
@@ -14,13 +14,11 @@ pub struct RefreshToken<R> {
 }
 
 impl<R: AuthRepository> RefreshToken<R> {
-    pub async fn execute(
-        &self,
-        token: String,
-        ) -> Result<TokenPair, AppError> {
+    pub async fn execute(&self, token: String) -> Result<TokenPair, AppError> {
         let hash = hex::encode(Sha256::digest(token.as_bytes()));
 
-        let session = match self.repository
+        let session = match self
+            .repository
             .find_session_by_token_hash(&hash)
             .await
             .map_err(AppError::internal)?
@@ -33,13 +31,18 @@ impl<R: AuthRepository> RefreshToken<R> {
             return Err(AppError::Unauthorized);
         }
 
-        self.repository.revoke_session(session.id).await.map_err(AppError::internal)?;
+        self.repository
+            .revoke_session(session.id)
+            .await
+            .map_err(AppError::internal)?;
 
         let handle = session.handle.clone().ok_or(AppError::Unauthorized)?;
-        let access_token = encode_access(&self.jwt, session.user_id, handle.clone()).map_err(AppError::internal)?;
-        let refresh_token = encode_refresh(&self.jwt, session.user_id, handle).map_err(AppError::internal)?;
+        let access_token = encode_access(&self.jwt, session.user_id, handle.clone())
+            .map_err(AppError::internal)?;
+        let refresh_token =
+            encode_refresh(&self.jwt, session.user_id, handle).map_err(AppError::internal)?;
 
-        let new_hash   = hex::encode(Sha256::digest(refresh_token.as_bytes()));
+        let new_hash = hex::encode(Sha256::digest(refresh_token.as_bytes()));
         let expires_at = Utc::now() + chrono::Duration::seconds(self.refresh_ttl_secs);
 
         let new_session = Session {
@@ -54,7 +57,10 @@ impl<R: AuthRepository> RefreshToken<R> {
             revoked_at: None,
         };
 
-        self.repository.create_session(&new_session).await.map_err(AppError::internal)?;
+        self.repository
+            .create_session(&new_session)
+            .await
+            .map_err(AppError::internal)?;
 
         Ok(TokenPair {
             access_token,

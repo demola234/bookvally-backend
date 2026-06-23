@@ -1,6 +1,6 @@
+use kernel::UserId;
 use redis::aio::ConnectionManager;
 use redis::cmd;
-use kernel::UserId;
 
 pub struct Leaderboard {
     pub client: ConnectionManager,
@@ -11,9 +11,19 @@ impl Leaderboard {
         Self { client }
     }
 
-    pub async fn upsert_score(&self, league_id: &str, user_id: UserId, score: f64) -> anyhow::Result<()> {
+    pub async fn upsert_score(
+        &self,
+        league_id: &str,
+        user_id: UserId,
+        score: f64,
+    ) -> anyhow::Result<()> {
         let mut conn = self.client.clone();
-        cmd("ZADD").arg(format!("leaderboard:{}", league_id)).arg(score).arg(user_id.to_string()).query_async::<()>(&mut conn).await?;
+        cmd("ZADD")
+            .arg(format!("leaderboard:{}", league_id))
+            .arg(score)
+            .arg(user_id.to_string())
+            .query_async::<()>(&mut conn)
+            .await?;
         Ok(())
     }
 
