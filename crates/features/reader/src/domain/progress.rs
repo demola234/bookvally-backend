@@ -28,7 +28,6 @@ impl Progress {
         }
     }
 
-    /// Update page position. Validates bounds.
     pub fn set_page(&mut self, page: i32) -> Result<(), ProgressError> {
         if page < 0 {
             return Err(ProgressError::NegativePage);
@@ -46,7 +45,6 @@ impl Progress {
         self.current_locator = Some(locator.into());
     }
 
-    /// 0.0–100.0. Returns 0 when total_pages unknown or zero (no div-by-zero).
     pub fn pct(&self) -> Decimal {
         match self.total_pages {
             Some(total) if total > 0 => {
@@ -71,8 +69,6 @@ mod tests {
         Uuid::new_v4()
     }
 
-    // ── set_page ─────────────────────────────────────────────
-
     #[test]
     fn set_page_within_bounds_ok() {
         let mut p = Progress::new(item(), Some(300));
@@ -83,7 +79,7 @@ mod tests {
     #[test]
     fn set_page_to_last_page_ok() {
         let mut p = Progress::new(item(), Some(300));
-        p.set_page(300).unwrap(); // exactly the last page is valid
+        p.set_page(300).unwrap();
         assert_eq!(p.current_page, 300);
     }
 
@@ -92,7 +88,7 @@ mod tests {
         let mut p = Progress::new(item(), Some(300));
         let err = p.set_page(301).unwrap_err();
         assert_eq!(err, ProgressError::PageExceedsTotal(301, 300));
-        assert_eq!(p.current_page, 0); // state unchanged on error
+        assert_eq!(p.current_page, 0);
     }
 
     #[test]
@@ -103,13 +99,10 @@ mod tests {
 
     #[test]
     fn set_page_without_total_has_no_upper_bound() {
-        // PDF with unknown page count — allow any non-negative page
         let mut p = Progress::new(item(), None);
         p.set_page(9999).unwrap();
         assert_eq!(p.current_page, 9999);
     }
-
-    // ── pct ──────────────────────────────────────────────────
 
     #[test]
     fn pct_is_zero_on_fresh_progress() {
@@ -133,27 +126,22 @@ mod tests {
 
     #[test]
     fn pct_is_zero_when_total_pages_unknown() {
-        // EPUB with no page count — percentage meaningless, return 0 not NaN
         let p = Progress::new(item(), None);
         assert_eq!(p.pct(), dec!(0));
     }
 
     #[test]
     fn pct_is_zero_when_total_pages_is_zero() {
-        // Guard against division by zero from bad metadata
         let p = Progress::new(item(), Some(0));
         assert_eq!(p.pct(), dec!(0));
     }
 
     #[test]
     fn pct_caps_at_100() {
-        // Should never exceed 100 even if current_page somehow > total
         let mut p = Progress::new(item(), Some(100));
-        p.current_page = 120; // force bad state (e.g. data import)
+        p.current_page = 120;
         assert_eq!(p.pct(), dec!(100));
     }
-
-    // ── is_finished ──────────────────────────────────────────
 
     #[test]
     fn is_finished_when_at_last_page() {
@@ -173,20 +161,17 @@ mod tests {
     fn is_not_finished_when_total_unknown() {
         let mut p = Progress::new(item(), None);
         p.set_page(500).unwrap();
-        assert!(!p.is_finished()); // can't know without total
+        assert!(!p.is_finished());
     }
 
     #[test]
     fn is_not_finished_when_total_is_zero() {
         let p = Progress::new(item(), Some(0));
-        assert!(!p.is_finished()); // degenerate book — don't mark finished
+        assert!(!p.is_finished());
     }
-
-    // ── locator ──────────────────────────────────────────────
 
     #[test]
     fn set_locator_is_independent_of_page() {
-        // EPUB CFI / PDF anchor can be set without updating page number
         let mut p = Progress::new(item(), Some(300));
         p.set_locator("epubcfi(/6/4[chap01]!/4/2/1:0)");
         assert_eq!(p.current_page, 0);
