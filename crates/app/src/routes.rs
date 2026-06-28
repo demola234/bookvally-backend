@@ -60,10 +60,14 @@ pub fn all_routes(container: Arc<Container>) -> axum::Router {
         )
     });
 
+    let library_state =
+        feat_library::wiring::LibraryState::new(container.db.clone(), container.jwt.clone());
+
     let mut openapi = ApiDoc::openapi();
     openapi.merge(feat_auth::http::AuthApiDoc::openapi());
     openapi.merge(feat_profile::http::ProfileApiDoc::openapi());
     openapi.merge(feat_catalog::http::CatalogApiDoc::openapi());
+    openapi.merge(feat_library::http::LibraryApiDoc::openapi());
 
     openapi.components = Some({
         let mut c = openapi.components.take().unwrap_or_default();
@@ -92,6 +96,7 @@ pub fn all_routes(container: Arc<Container>) -> axum::Router {
             }
             r
         })
+        .merge(feat_library::http::routes::routes().with_state(library_state))
         .layer(trace_layer())
         .layer(request_id_layer())
         .with_state(container)
