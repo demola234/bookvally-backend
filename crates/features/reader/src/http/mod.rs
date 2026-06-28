@@ -4,7 +4,7 @@ pub mod routes;
 use utoipa::OpenApi;
 
 use crate::http::dto::{
-    AddBookmarkRequest, BookmarkResponse, CreatedResponse, CreateHighlightRequest,
+    AddBookmarkRequest, BookmarkResponse, CreateHighlightRequest, CreatedResponse,
     EndSessionRequest, HighlightResponse, SaveProgressRequest,
 };
 

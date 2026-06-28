@@ -137,13 +137,11 @@ impl ReaderRepository for PgReaderRepository {
     }
 
     async fn update_last_read(&self, item_id: Uuid, user_id: Uuid) -> anyhow::Result<()> {
-        sqlx::query(
-            "UPDATE library_items SET last_read_at = NOW() WHERE id = $1 AND user_id = $2",
-        )
-        .bind(item_id)
-        .bind(user_id)
-        .execute(&self.pool)
-        .await?;
+        sqlx::query("UPDATE library_items SET last_read_at = NOW() WHERE id = $1 AND user_id = $2")
+            .bind(item_id)
+            .bind(user_id)
+            .execute(&self.pool)
+            .await?;
 
         Ok(())
     }

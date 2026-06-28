@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
-use axum::{Json, Router, routing::delete, routing::post};
+use axum::{routing::delete, routing::post, Json, Router};
 use uuid::Uuid;
 
 use auth_kit::JwtAuthExtractor;
@@ -17,7 +17,7 @@ use crate::application::ports::ReaderRepository;
 use crate::application::save_progress::{SaveProgress, SaveProgressInput};
 use crate::domain::SessionMode;
 use crate::http::dto::{
-    AddBookmarkRequest, CreatedResponse, CreateHighlightRequest, EndSessionRequest,
+    AddBookmarkRequest, CreateHighlightRequest, CreatedResponse, EndSessionRequest,
     HighlightResponse, SaveProgressRequest,
 };
 use crate::wiring::ReaderState;
@@ -30,7 +30,10 @@ pub fn routes() -> Router<ReaderState> {
             "/reader/items/{id}/highlights",
             post(create_highlight).get(list_highlights),
         )
-        .route("/reader/items/{id}/highlights/{hid}", delete(delete_highlight))
+        .route(
+            "/reader/items/{id}/highlights/{hid}",
+            delete(delete_highlight),
+        )
         .route("/reader/items/{id}/bookmarks", post(add_bookmark)))
 }
 
@@ -53,18 +56,20 @@ async fn save_progress(
     Path(id): Path<Uuid>,
     Json(body): Json<SaveProgressRequest>,
 ) -> Result<StatusCode, HttpError> {
-    SaveProgress { repository: state.repo.clone() }
-        .execute(
-            id,
-            *user.id().as_uuid(),
-            SaveProgressInput {
-                current_page: body.current_page,
-                current_locator: body.current_locator,
-                progress_pct: body.progress_pct,
-            },
-        )
-        .await
-        .map_err(HttpError::from)?;
+    SaveProgress {
+        repository: state.repo.clone(),
+    }
+    .execute(
+        id,
+        *user.id().as_uuid(),
+        SaveProgressInput {
+            current_page: body.current_page,
+            current_locator: body.current_locator,
+            progress_pct: body.progress_pct,
+        },
+    )
+    .await
+    .map_err(HttpError::from)?;
 
     Ok(StatusCode::NO_CONTENT)
 }
@@ -133,21 +138,26 @@ async fn create_highlight(
     Path(id): Path<Uuid>,
     Json(body): Json<CreateHighlightRequest>,
 ) -> Result<(StatusCode, Json<CreatedResponse>), HttpError> {
-    let highlight_id = CreateHighlight { repository: state.repo.clone() }
-        .execute(
-            id,
-            *user.id().as_uuid(),
-            CreateHighlightInput {
-                color: body.color,
-                locator_start: body.locator_start,
-                locator_end: body.locator_end,
-                selected_text: body.selected_text,
-            },
-        )
-        .await
-        .map_err(HttpError::from)?;
+    let highlight_id = CreateHighlight {
+        repository: state.repo.clone(),
+    }
+    .execute(
+        id,
+        *user.id().as_uuid(),
+        CreateHighlightInput {
+            color: body.color,
+            locator_start: body.locator_start,
+            locator_end: body.locator_end,
+            selected_text: body.selected_text,
+        },
+    )
+    .await
+    .map_err(HttpError::from)?;
 
-    Ok((StatusCode::CREATED, Json(CreatedResponse::new(highlight_id))))
+    Ok((
+        StatusCode::CREATED,
+        Json(CreatedResponse::new(highlight_id)),
+    ))
 }
 
 #[utoipa::path(
@@ -167,10 +177,12 @@ async fn list_highlights(
     JwtAuthExtractor(user): JwtAuthExtractor,
     Path(id): Path<Uuid>,
 ) -> Result<Json<Vec<HighlightResponse>>, HttpError> {
-    let highlights = ListHighlights { repository: state.repo.clone() }
-        .execute(id, *user.id().as_uuid())
-        .await
-        .map_err(HttpError::from)?;
+    let highlights = ListHighlights {
+        repository: state.repo.clone(),
+    }
+    .execute(id, *user.id().as_uuid())
+    .await
+    .map_err(HttpError::from)?;
 
     let resp = highlights
         .into_iter()
@@ -237,18 +249,20 @@ async fn add_bookmark(
     Path(id): Path<Uuid>,
     Json(body): Json<AddBookmarkRequest>,
 ) -> Result<(StatusCode, Json<CreatedResponse>), HttpError> {
-    let bookmark_id = AddBookmark { repository: state.repo.clone() }
-        .execute(
-            id,
-            *user.id().as_uuid(),
-            AddBookmarkInput {
-                locator: body.locator,
-                page: body.page,
-                label: body.label,
-            },
-        )
-        .await
-        .map_err(HttpError::from)?;
+    let bookmark_id = AddBookmark {
+        repository: state.repo.clone(),
+    }
+    .execute(
+        id,
+        *user.id().as_uuid(),
+        AddBookmarkInput {
+            locator: body.locator,
+            page: body.page,
+            label: body.label,
+        },
+    )
+    .await
+    .map_err(HttpError::from)?;
 
     Ok((StatusCode::CREATED, Json(CreatedResponse::new(bookmark_id))))
 }

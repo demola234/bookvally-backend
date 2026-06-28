@@ -30,7 +30,13 @@ impl<R: ReaderRepository> SaveProgress<R> {
         let pct = input.progress_pct.clamp(0.0, 100.0);
 
         self.repository
-            .update_progress(item_id, user_id, input.current_page, input.current_locator, pct)
+            .update_progress(
+                item_id,
+                user_id,
+                input.current_page,
+                input.current_locator,
+                pct,
+            )
             .await
             .map_err(AppError::internal)?;
 

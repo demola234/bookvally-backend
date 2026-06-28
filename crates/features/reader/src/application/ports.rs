@@ -12,8 +12,6 @@ pub struct LibraryItemView {
     pub progress_pct: f64,
 }
 
-
-
 #[async_trait]
 pub trait ReaderRepository: Send + Sync + Clone {
     async fn find_library_item(
