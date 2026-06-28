@@ -5,3 +5,4 @@ pub mod jobs;
 pub mod routes;
 pub mod shutdown;
 pub mod telemetry;
+pub mod upload;

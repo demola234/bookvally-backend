@@ -4,7 +4,7 @@ use chrono::Utc;
 use persistence::PgPool;
 use uuid::Uuid;
 
-use crate::application::ports::CatalogRepository;
+use crate::application::ports::{CatalogRepository, ParsedChunk};
 use crate::domain::book::Book;
 use crate::domain::book_file::{BookFile, BookFormat, ImportStatus};
 
@@ -325,5 +325,76 @@ impl CatalogRepository for PgCatalogRepository {
             .execute(&self.pool)
             .await?;
         Ok(())
+    }
+
+    async fn save_text_chunks(&self, file_id: Uuid, chunks: &[ParsedChunk]) -> anyhow::Result<()> {
+        // Delete existing chunks first so re-parsing is idempotent.
+        sqlx::query("DELETE FROM book_text_chunks WHERE book_file_id = $1")
+            .bind(file_id)
+            .execute(&self.pool)
+            .await?;
+
+        for chunk in chunks {
+            sqlx::query(
+                "INSERT INTO book_text_chunks (book_file_id, chapter, sequence, text, char_count)
+                 VALUES ($1, $2, $3, $4, $5)",
+            )
+            .bind(file_id)
+            .bind(chunk.chapter)
+            .bind(chunk.sequence)
+            .bind(&chunk.text)
+            .bind(chunk.char_count)
+            .execute(&self.pool)
+            .await?;
+        }
+
+        Ok(())
+    }
+
+    async fn get_text_chunks(
+        &self,
+        file_id: Uuid,
+        chapter: Option<i32>,
+    ) -> anyhow::Result<Vec<ParsedChunk>> {
+        #[derive(sqlx::FromRow)]
+        struct ChunkRow {
+            chapter: i32,
+            sequence: i32,
+            text: String,
+            char_count: i32,
+        }
+
+        let rows = if let Some(ch) = chapter {
+            sqlx::query_as::<_, ChunkRow>(
+                "SELECT chapter, sequence, text, char_count
+                 FROM book_text_chunks
+                 WHERE book_file_id = $1 AND chapter = $2
+                 ORDER BY sequence ASC",
+            )
+            .bind(file_id)
+            .bind(ch)
+            .fetch_all(&self.pool)
+            .await?
+        } else {
+            sqlx::query_as::<_, ChunkRow>(
+                "SELECT chapter, sequence, text, char_count
+                 FROM book_text_chunks
+                 WHERE book_file_id = $1
+                 ORDER BY chapter ASC, sequence ASC",
+            )
+            .bind(file_id)
+            .fetch_all(&self.pool)
+            .await?
+        };
+
+        Ok(rows
+            .into_iter()
+            .map(|r| ParsedChunk {
+                chapter: r.chapter,
+                sequence: r.sequence,
+                text: r.text,
+                char_count: r.char_count,
+            })
+            .collect())
     }
 }
