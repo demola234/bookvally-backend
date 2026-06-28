@@ -3,6 +3,22 @@ use crate::domain::book_file::{BookFile, BookFormat};
 use async_trait::async_trait;
 use uuid::Uuid;
 
+pub struct ParsedChunk {
+    pub chapter: i32,
+    pub sequence: i32,
+    pub text: String,
+    pub char_count: i32,
+}
+
+pub struct ParsedBook {
+    pub title: Option<String>,
+    pub author: Option<String>,
+    pub page_count: Option<i32>,
+    pub language: Option<String>,
+    pub cover_bytes: Option<Vec<u8>>,
+    pub chunks: Vec<ParsedChunk>,
+}
+
 #[async_trait]
 pub trait CatalogRepository: Send + Sync {
     async fn create_book(&self, book: &Book) -> anyhow::Result<Uuid>;
@@ -24,17 +40,17 @@ pub trait CatalogRepository: Send + Sync {
     async fn list_book_files(&self, user_id: Uuid) -> anyhow::Result<Vec<BookFile>>;
     async fn update_book_file(&self, file: &BookFile) -> anyhow::Result<()>;
     async fn delete_book_file(&self, file_id: Uuid, user_id: Uuid) -> anyhow::Result<()>;
+
+    // tts text chunks
+    async fn save_text_chunks(&self, file_id: Uuid, chunks: &[ParsedChunk]) -> anyhow::Result<()>;
+    async fn get_text_chunks(
+        &self,
+        file_id: Uuid,
+        chapter: Option<i32>,
+    ) -> anyhow::Result<Vec<ParsedChunk>>;
 }
 
 #[async_trait]
 pub trait FileParser: Send + Sync {
     async fn parse(&self, storage_key: &str, format: BookFormat) -> anyhow::Result<ParsedBook>;
-}
-
-pub struct ParsedBook {
-    pub title: Option<String>,
-    pub author: Option<String>,
-    pub page_count: Option<i32>,
-    pub language: Option<String>,
-    pub cover_bytes: Option<Vec<u8>>,
 }

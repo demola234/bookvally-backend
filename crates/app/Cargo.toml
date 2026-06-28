@@ -39,3 +39,6 @@ anyhow             = { workspace = true }
 utoipa             = { workspace = true }
 utoipa-swagger-ui  = { workspace = true }
 sqlx       = { workspace = true }
+image      = { workspace = true }
+blurhash   = { workspace = true }
+uuid       = { workspace = true }

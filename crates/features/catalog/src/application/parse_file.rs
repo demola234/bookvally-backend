@@ -84,6 +84,13 @@ impl<R: CatalogRepository> ParseFile<R> {
             .await
             .map_err(AppError::internal)?;
 
+        if !parsed.chunks.is_empty() {
+            self.repository
+                .save_text_chunks(file_id, &parsed.chunks)
+                .await
+                .map_err(AppError::internal)?;
+        }
+
         Ok(())
     }
 }

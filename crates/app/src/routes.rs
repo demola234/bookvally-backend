@@ -6,6 +6,7 @@ use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
 use crate::container::Container;
+use crate::upload::{upload_image, UploadResponse, UploadState};
 
 #[derive(OpenApi)]
 #[openapi(
@@ -28,8 +29,11 @@ use crate::container::Container;
         (name = "discover",     description = "Search, trending, friends reading now"),
         (name = "social",       description = "Friends, invites, notifications, push"),
         (name = "stats",        description = "Dashboard and analytics projections"),
-        (name = "profile",      description = "Profile, settings, reminders")
+        (name = "profile",      description = "Profile, settings, reminders"),
+        (name = "upload",       description = "Central image upload with blurhash")
     ),
+    paths(crate::upload::upload_image),
+    components(schemas(UploadResponse)),
     servers(
         (url = "http://localhost:8080", description = "Local development"),
     )
@@ -63,6 +67,13 @@ pub fn all_routes(container: Arc<Container>) -> axum::Router {
     let library_state =
         feat_library::wiring::LibraryState::new(container.db.clone(), container.jwt.clone());
 
+    let tts_state = feat_tts::wiring::TtsState::new(container.db.clone(), container.jwt.clone());
+
+    let upload_state = container.storage.as_ref().map(|s| UploadState {
+        storage: s.clone(),
+        jwt: container.jwt.clone(),
+    });
+
     let reader_state = feat_reader::wiring::ReaderState::new(
         container.db.clone(),
         container.jwt.clone(),
@@ -75,6 +86,7 @@ pub fn all_routes(container: Arc<Container>) -> axum::Router {
     openapi.merge(feat_catalog::http::CatalogApiDoc::openapi());
     openapi.merge(feat_library::http::LibraryApiDoc::openapi());
     openapi.merge(feat_reader::http::ReaderApiDoc::openapi());
+    openapi.merge(feat_tts::http::TtsApiDoc::openapi());
 
     openapi.components = Some({
         let mut c = openapi.components.take().unwrap_or_default();
@@ -93,6 +105,16 @@ pub fn all_routes(container: Arc<Container>) -> axum::Router {
 
     Router::new()
         .route("/health", axum::routing::get(|| async { "ok" }))
+        .merge({
+            let mut r = axum::Router::new();
+            if let Some(state) = upload_state {
+                r = r.route(
+                    "/v1/upload",
+                    axum::routing::post(upload_image).with_state(state),
+                );
+            }
+            r
+        })
         .merge(SwaggerUi::new("/docs").url("/docs/openapi.json", openapi))
         .merge(feat_auth::http::routes::routes().with_state(auth_state))
         .merge(feat_profile::http::routes::routes().with_state(profile_state))
@@ -105,6 +127,7 @@ pub fn all_routes(container: Arc<Container>) -> axum::Router {
         })
         .merge(feat_library::http::routes::routes().with_state(library_state))
         .merge(feat_reader::http::routes::routes().with_state(reader_state))
+        .merge(feat_tts::http::routes::routes().with_state(tts_state))
         .layer(trace_layer())
         .layer(request_id_layer())
         .with_state(container)
