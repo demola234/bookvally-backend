@@ -441,8 +441,6 @@ impl LibraryRepository for PgLibraryRepository {
         Ok(())
     }
 
-    // ── bookmarks ─────────────────────────────────────────────────────────────
-
     async fn create_bookmark(&self, b: &Bookmark) -> anyhow::Result<Uuid> {
         sqlx::query_scalar::<_, Uuid>(
             "INSERT INTO bookmarks (id, library_item_id, locator, page, label)
