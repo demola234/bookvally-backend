@@ -69,6 +69,9 @@ pub fn all_routes(container: Arc<Container>) -> axum::Router {
 
     let tts_state = feat_tts::wiring::TtsState::new(container.db.clone(), container.jwt.clone());
 
+    let plans_state =
+        feat_plans::wiring::PlansState::new(container.db.clone(), container.jwt.clone());
+
     let upload_state = container.storage.as_ref().map(|s| UploadState {
         storage: s.clone(),
         jwt: container.jwt.clone(),
@@ -87,6 +90,7 @@ pub fn all_routes(container: Arc<Container>) -> axum::Router {
     openapi.merge(feat_library::http::LibraryApiDoc::openapi());
     openapi.merge(feat_reader::http::ReaderApiDoc::openapi());
     openapi.merge(feat_tts::http::TtsApiDoc::openapi());
+    openapi.merge(feat_plans::http::PlansApiDoc::openapi());
 
     openapi.components = Some({
         let mut c = openapi.components.take().unwrap_or_default();
@@ -128,6 +132,7 @@ pub fn all_routes(container: Arc<Container>) -> axum::Router {
         .merge(feat_library::http::routes::routes().with_state(library_state))
         .merge(feat_reader::http::routes::routes().with_state(reader_state))
         .merge(feat_tts::http::routes::routes().with_state(tts_state))
+        .merge(feat_plans::http::routes::routes().with_state(plans_state))
         .layer(trace_layer())
         .layer(request_id_layer())
         .with_state(container)
