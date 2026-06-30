@@ -21,3 +21,5 @@ async-trait = { workspace = true }
 tracing     = { workspace = true }
 sqlx        = { workspace = true }
 tokio       = { workspace = true }
+anyhow      = { workspace = true }
+utoipa      = { workspace = true }
